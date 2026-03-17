@@ -1,0 +1,18 @@
+<Project Sdk="Godot.NET.Sdk/4.6.0">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Godot's C# project must not compile test/obj/.godot sources. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="scripts/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\Warband.Core\Warband.Core.csproj" />
+  </ItemGroup>
+</Project>
+

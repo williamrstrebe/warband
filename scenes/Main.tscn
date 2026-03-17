@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8v1v7k8qf0o7"]
+
+[ext_resource type="Script" path="res://scripts/SimulationRoot.cs" id="1_3b8p0"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_3b8p0")
+

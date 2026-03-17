@@ -1,0 +1,12 @@
+E:\warband\src\Warband.Core\bin\Debug\net8.0\Warband.Core.deps.json
+E:\warband\src\Warband.Core\bin\Debug\net8.0\Warband.Core.dll
+E:\warband\src\Warband.Core\bin\Debug\net8.0\Warband.Core.pdb
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.GeneratedMSBuildEditorConfig.editorconfig
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.AssemblyInfoInputs.cache
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.AssemblyInfo.cs
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.csproj.CoreCompileInputs.cache
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.sourcelink.json
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.dll
+E:\warband\src\Warband.Core\obj\Debug\net8.0\refint\Warband.Core.dll
+E:\warband\src\Warband.Core\obj\Debug\net8.0\Warband.Core.pdb
+E:\warband\src\Warband.Core\obj\Debug\net8.0\ref\Warband.Core.dll
