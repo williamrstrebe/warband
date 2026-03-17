@@ -30,81 +30,417 @@ All visuals are placeholders (colored shapes, simple colliders).
 
 ---
 
-## Prototype Roadmap (Streamlined)
+# Overworld Army Sandbox – Technical Prototype Roadmap
 
-### Phase 0 — Simulation Foundation
-- Fixed tick game loop
-- Time scaling (pause / fast forward)
-- Rectangular overworld bounds
-
-### Phase 1 — Player Party
-- Click-to-move navigation
-- Movement speed model (party size penalty)
-
-### Phase 2 — Roaming AI Parties
-- Random wandering behavior
-- Detection radius system
-- State switching: wander / chase / flee
-
-### Phase 3 — Encounter System
-- Collision-triggered encounters
-- Simple modal interaction
-- Auto-resolve combat formula
-
-### Phase 4 — Party Logistics
-- Town hubs (recruit troops)
-- Wage tick system
-- Basic morale model
-
-### Phase 5 — Map Content Density
-- Static points of interest
-- Procedural roaming party spawn rules
-
-### Phase 6 — Faction Simulation
-- Settlement ownership data model
-- AI army objectives (attack / defend / escort)
-- Territorial changes on the map
-
-### Phase 7 — Player Strategic Progression
-- Contract / mission system
-- Reputation unlocking mechanics
-
-### Phase 8 — Capture Mechanics
-- Siege auto-resolve
-- Settlement ownership transfer
-
-### Phase 9 — World Pressure Engine
-- Periodic war declarations
-- Invasion army spawning
-
-### Phase 10 — Debug & Balancing Tools
-- Spawn / edit stats / force events
-- High simulation speed
-- AI-only simulation mode
+General roadmap for a **Warband-like overworld sandbox prototype**.  
+Focus: **systems validation, emergence and deterministic simulation.**
 
 ---
 
-## Validation Criteria
+# Prototype Roadmap — Overworld Army Sandbox (Technical Focus)
 
-Prototype is successful when:
+This document describes a **technical-first prototype roadmap** for building an overworld army sandbox game (Mount-and-Blade-like structure) using **placeholder visuals and fully testable incremental steps**.
 
-- Player can play a sandbox session ~30–60 minutes
-- Meaningful travel decisions exist (fight / flee / recruit / trade)
-- AI factions dynamically change territory
-- Economy creates pressure (wages, losses)
-- Both snowball and collapse scenarios are possible
-- Emergent hotspots and conflicts appear without scripting
+The objective is to validate **systems, simulation and emergent gameplay** before investing in visuals, content or polish.
+
+All visuals are placeholders:
+
+- World map = simple 2D rectangle with solid fill
+- Player / AI parties = geometric shapes with colliders
+- Towns / POIs = colored squares
+- Encounters = modal menus
+- Battles = auto-resolve formulas
+
+The prototype must remain **playable at every phase.**
+
+---
+
+# ⭐ Phase 0 — Core Foundation (Time + Loop)
+
+## Step 0.1 — Game Loop + Time Scale
+
+**Goal:** deterministic simulation tick.
+
+### Implement
+
+- Fixed timestep simulation (ex: 10 ticks/sec)
+- Pause / 1x / 2x / 5x speed
+- Global time counter
+
+### Test criteria
+
+- Objects move same distance regardless of FPS  
+- Speed multiplier changes simulation rate correctly  
+- Pause freezes AI + player logic  
 
 ---
 
-## Future Extensions (Post-Prototype)
+## Step 0.2 — Basic World Bounds
 
-- Tactical battle layer
-- Advanced AI strategy
-- Economy simulation (trade routes, supply)
-- Diplomacy / politics
-- Save system
-- UI/UX improvements
-- Visual polish
+**Goal:** create navigable overworld container.
+
+### Implement
+
+- World = simple rectangle
+- Clamp positions inside bounds
+- Debug grid optional
+
+### Test
+
+- Player cannot exit map  
+- AI cannot exit map  
+- Movement along edges stable  
 
 ---
+
+# ⭐ Phase 1 — Player Party Movement
+
+## Step 1.1 — Click-to-Move Navigation
+
+### Implement
+
+- Player entity (circle collider)
+- Target position on click
+- Constant speed movement
+- Stop threshold
+
+### Test
+
+- Player reaches clicked point reliably  
+- Multiple clicks update target smoothly  
+
+---
+
+## Step 1.2 — Movement Speed Model (First Systemic Variable)
+
+Add:
+
+- BaseSpeed
+- PartySizePenalty
+
+Example:
+speed = baseSpeed / (1 + partySize * k)
+
+
+### Test
+
+- Increasing party size visibly reduces speed  
+- Speed affects arrival time measurably  
+
+---
+
+# ⭐ Phase 2 — Roaming AI Parties (Core Emergence Begins)
+
+## Step 2.1 — Random Walk AI
+
+### Implement
+
+- Spawn N red circles
+- Pick random destination inside map
+- Move → idle → pick new destination
+
+### Test
+
+- No AI freezing  
+- Uniform map coverage  
+- No boundary jitter  
+
+---
+
+## Step 2.2 — Detection Radius System
+
+Add:
+
+- Circular detection collider
+- Player + AI both detectable
+
+### Test
+
+- Draw debug radius  
+- Log when entities enter/exit  
+
+---
+
+## Step 2.3 — Simple Behavior Switch
+
+AI states:
+
+- Wander
+- Chase player if inside radius
+- Flee if weaker
+
+Requires:
+
+- StrengthValue property
+
+### Test
+
+- Strong AI chases  
+- Weak AI flees  
+- State transitions stable  
+
+---
+
+# ⭐ Phase 3 — Encounter Trigger System
+
+## Step 3.1 — Collision Encounter
+
+### Implement
+
+- If colliders overlap → pause world  
+- Show simple modal:  
+  - Fight  
+  - Auto-resolve  
+  - Flee (speed roll)
+
+### Test
+
+- World freezes during encounter  
+- Resume works  
+- No repeated trigger loop  
+
+---
+
+## Step 3.2 — Auto-Resolve Combat v1
+
+Simple formula:
+power = troopCount * troopTier * morale
+
+
+Random modifier ±20%
+
+Outcome:
+
+- loser loses % troops  
+- morale penalty  
+- winner gains loot value
+
+### Test
+
+- Results statistically consistent  
+- Larger army wins most fights  
+
+---
+
+# ⭐ Phase 4 — Party Logistics Layer
+
+## Step 4.1 — Troop Recruitment Stub
+
+Add towns (blue squares).
+
+Entering town:
+
+- recruit +5 troops button  
+- cost deducted
+
+### Test
+
+- troop count increases  
+- speed decreases  
+- strength increases  
+
+---
+
+## Step 4.2 — Wage Tick System
+
+Every X hours:
+gold -= troopCount * wage
+
+
+### Test
+
+- Bankruptcy triggers troop desertion  
+- Desertion reduces party size  
+
+---
+
+## Step 4.3 — Morale System v1
+
+Morale affected by:
+
+- recent victory +  
+- starvation –  
+- outnumbered –
+
+Morale affects:
+
+- flee chance  
+- combat power  
+
+### Test
+
+- low morale causes more auto losses  
+
+---
+
+# ⭐ Phase 5 — Map Content Density
+
+## Step 5.1 — Static POIs
+
+Add:
+
+- ruins  
+- camps  
+- neutral caravans  
+
+Each = different interaction menu.
+
+### Test
+
+- Player can farm gold via exploration  
+- Travel decisions become meaningful  
+
+---
+
+## Step 5.2 — Procedural Party Spawn
+
+Spawn rules:
+
+- bandits near wilderness  
+- patrols near towns  
+- caravans between towns  
+
+### Test
+
+- emergent hotspots appear  
+- roads feel safer  
+
+---
+
+# ⭐ Phase 6 — Faction Ownership Layer
+
+## Step 6.1 — Settlement Ownership Data Model
+
+Each town:
+
+- factionId  
+- garrisonStrength  
+
+Map overlay colored by faction.
+
+### Test
+
+- ownership visible  
+- factions trackable  
+
+---
+
+## Step 6.2 — AI Army Objectives
+
+Armies periodically choose:
+
+- defend
+- attack nearest enemy town
+- escort caravan
+
+### Test
+
+- map frontlines form  
+- towns change hands  
+
+---
+
+# ⭐ Phase 7 — Player Strategic Progression
+
+## Step 7.1 — Contract System
+
+Town offers:
+
+- hunt bandits
+- escort caravan
+- raid enemy
+
+Rewards:
+
+- gold  
+- reputation  
+
+### Test
+
+- directed travel emerges  
+- player stops random wandering  
+
+---
+
+## Step 7.2 — Reputation → Political Unlocks
+
+Thresholds unlock:
+
+- larger recruit pool  
+- ability to join faction  
+- ability to capture town  
+
+### Test
+
+- progression stages clearly felt  
+
+---
+
+# ⭐ Phase 8 — Capture Mechanics
+
+## Step 8.1 — Siege Auto-Resolve
+
+If player power > garrison:
+
+- town ownership changes  
+- player installs governor (simple stat buff)
+
+### Test
+
+- map color changes  
+- AI reacts (retaliation attacks)
+
+---
+
+# ⭐ Phase 9 — Pressure Engine
+
+## Step 9.1 — War Cycle Generator
+
+Every X days:
+
+- factions declare wars  
+- spawn invasion armies  
+
+### Test
+
+- player cannot remain passive forever  
+- world state changes without player  
+
+---
+
+# ⭐ Phase 10 — System Balancing Tools (CRITICAL)
+
+Before any graphics:
+
+### Implement
+
+- debug panel:
+  - spawn party
+  - add gold
+  - change morale
+  - force war
+- simulation speed x20
+
+### Test
+
+- ability to run “AI-only world” and observe emergent behavior  
+
+This is **the most important step for sandbox validation.**
+
+---
+
+# ⭐ Final Prototype Validation Goal
+
+The prototype is considered successful when:
+
+- Player can survive 30–60 minutes sandbox session  
+- Meaningful decisions exist:
+  - chase / flee  
+  - recruit / save gold  
+  - join war / trade  
+- Map changes without scripting  
+- Snowball and collapse both possible  
+
+At this stage the project has achieved:
+
+**A real systemic overworld army sandbox core.**
