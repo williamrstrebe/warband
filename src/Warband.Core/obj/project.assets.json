@@ -8,7 +8,7 @@
     "net8.0": []
   },
   "packageFolders": {
-    "C:\\Users\\William\\.nuget\\packages\\": {},
+    "C:\\Users\\William\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d364ff7aba7fbddaa0d587b5bd3286d3\\nuget": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
@@ -17,7 +17,7 @@
       "projectUniqueName": "E:\\warband\\src\\Warband.Core\\Warband.Core.csproj",
       "projectName": "Warband.Core",
       "projectPath": "E:\\warband\\src\\Warband.Core\\Warband.Core.csproj",
-      "packagesPath": "C:\\Users\\William\\.nuget\\packages\\",
+      "packagesPath": "C:\\Users\\William\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d364ff7aba7fbddaa0d587b5bd3286d3\\nuget",
       "outputPath": "E:\\warband\\src\\Warband.Core\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [

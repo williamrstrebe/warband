@@ -41,13 +41,35 @@ GDScript can still be used later for rapid UI/debug, but Phase 0’s core is int
 ## How to run
 - **Godot**: open the project and run the main scene (set in `project.godot`).
   - Controls (Phase 0):
-    - Space: pause/unpause
-    - `[` / `]`: slower/faster time scale
+    - Bound through **InputMap actions** (see `project.godot [input]`):
+      - `sim_toggle_pause` (default: Space)
+      - `sim_time_slower` (default: `[`)
+      - `sim_time_faster` (default: `]`)
 - **Tests** (core logic): from repo root:
 
 ```bash
 dotnet test
 ```
+
+## Input best practices (foundation for future key remapping)
+- Always code against **action names** (e.g. `Input.IsActionJustPressed("sim_toggle_pause")`), not hardcoded `Keycode`s.
+- Keep action names **stable** and **semantically named** (what the action means, not which key triggers it).
+- Define default bindings in `project.godot` under `[input]` so a fresh checkout is playable.
+- For future remapping:
+  - Read current bindings with `InputMap.ActionGetEvents(action)`
+  - Replace bindings by `InputMap.ActionEraseEvents(action)` + `InputMap.ActionAddEvent(action, ev)`
+  - Persist user bindings in a config file (e.g. `user://settings.cfg`) and apply them on boot.
+- Avoid using `_UnhandledInput` to inspect raw key events unless you are implementing a remap UI that needs to capture “next key pressed”.
+
+### Suggested future implementation plan (key remapping)
+- Create a small service (e.g. `scripts/InputRemapService.cs`) that:
+  - Knows the canonical action list (Phase 0+: sim + later player movement, camera, UI).
+  - Loads saved mappings at startup and applies them to `InputMap`.
+  - Exposes `Rebind(action, InputEvent)` and `ResetToDefaults()`.
+- Create a minimal debug UI later (can be GDScript or C#) that:
+  - Lists actions → current bindings
+  - Enters “listening mode” to capture the next input event and rebind it
+  - Saves to `user://settings.cfg`
 
 ## Determinism notes (Phase 0 scope)
 - The simulation advances in fixed ticks produced by an accumulator-based clock.

@@ -19,6 +19,23 @@ run/main_scene="res://scenes/Main.tscn"
 
 project/assembly_name="Warband"
 
+[input]
+
+sim_toggle_pause={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":32,"physical_keycode":0,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)]
+}
+
+sim_time_slower={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":91,"physical_keycode":0,"key_label":0,"unicode":91,"location":0,"echo":false,"script":null)]
+}
+
+sim_time_faster={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":93,"physical_keycode":0,"key_label":0,"unicode":93,"location":0,"echo":false,"script":null)]
+}
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

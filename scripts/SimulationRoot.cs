@@ -39,17 +39,17 @@ public partial class SimulationRoot : Node2D
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+		if (!@event.IsPressed()) return;
 
-		if (key.Keycode == Key.Space)
+		if (Input.IsActionJustPressed(InputActions.SimTogglePause))
 		{
 			_timeScaleIndex = _timeScaleIndex == 0 ? 1 : 0;
 		}
-		else if (key.Keycode == Key.Bracketleft)
+		else if (Input.IsActionJustPressed(InputActions.SimTimeSlower))
 		{
 			_timeScaleIndex = TimeScale.ClampIndex(_timeScaleIndex - 1);
 		}
-		else if (key.Keycode == Key.Bracketright)
+		else if (Input.IsActionJustPressed(InputActions.SimTimeFaster))
 		{
 			_timeScaleIndex = TimeScale.ClampIndex(_timeScaleIndex + 1);
 		}
@@ -73,7 +73,7 @@ public partial class SimulationRoot : Node2D
 			var text = $"Ticks: {_clock.TotalTicks}  |  SimTime: {_clock.SimTimeSeconds:0.000}s  |  Scale: {TimeScale.FromIndex(_timeScaleIndex)}x";
 			DrawString(font, new Vector2(16, 28), text, HorizontalAlignment.Left, -1, fontSize, new(1, 1, 1, 1));
 
-			var hint = "Space: pause  |  [ / ]: slower/faster";
+			var hint = "Pause: sim_toggle_pause  |  Slower/Faster: sim_time_slower / sim_time_faster";
 			DrawString(font, new Vector2(16, 52), hint, HorizontalAlignment.Left, -1, fontSize, new(1, 1, 1, 0.85f));
 		}
 	}
