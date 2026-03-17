@@ -1,7 +1,80 @@
-[gd_scene load_steps=2 format=3 uid="uid://c8v1v7k8qf0o7"]
+[gd_scene load_steps=5 format=3 uid="uid://c8v1v7k8qf0o7"]
 
 [ext_resource type="Script" path="res://scripts/SimulationRoot.cs" id="1_3b8p0"]
+[ext_resource type="Script" path="res://scripts/WorldBounds2D.cs" id="2_jn6a6"]
+[ext_resource type="Script" path="res://scripts/WorldCameraFit2D.cs" id="3_yw2m1"]
+[ext_resource type="Script" path="res://scripts/PlayerParty.cs" id="4_kc1w5"]
 
 [node name="Main" type="Node2D"]
+
+[node name="WorldBounds" type="Node2D" parent="."]
+script = ExtResource("2_jn6a6")
+Size = Vector2(1200, 800)
+ClampInsetPx = 16.0
+DrawGrid = false
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(0, 0)
+current = true
+
+[node name="WorldCameraFit" type="Node" parent="."]
+script = ExtResource("3_yw2m1")
+CameraPath = NodePath("../Camera2D")
+WorldBoundsPath = NodePath("../WorldBounds")
+VisualPaddingPx = 48.0
+
+[node name="DebugCanvas" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="DebugTop" type="Control" parent="DebugCanvas"]
+anchors_preset = 10
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="TickLabel" type="Label" parent="DebugCanvas/DebugTop"]
+anchors_preset = 10
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 8.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+horizontal_alignment = 1
+text = ""
+
+[node name="HintLabel" type="Label" parent="DebugCanvas/DebugTop"]
+anchors_preset = 10
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 32.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.85)
+horizontal_alignment = 1
+text = ""
+
+[node name="SimulationRoot" type="Node2D" parent="."]
 script = ExtResource("1_3b8p0")
+DebugLabelPath = NodePath("../DebugCanvas/DebugTop/TickLabel")
+DebugHintLabelPath = NodePath("../DebugCanvas/DebugTop/HintLabel")
+
+[node name="Player" type="Area2D" parent="SimulationRoot"]
+script = ExtResource("4_kc1w5")
+WorldBoundsPath = NodePath("../../WorldBounds")
 

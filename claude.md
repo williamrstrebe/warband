@@ -12,17 +12,41 @@ Source of truth for goals/roadmap: [`README.md`](README.md).
 - Incremental delivery: *every step remains playable*, with debug tooling early.
 
 ## Roadmap focus: Phase 0 (current)
-Phase 0 from `README.md`:
-- Fixed tick game loop
-- Time scaling (pause / fast forward)
-- Rectangular overworld bounds
+Per `README.md`, Phase 0 is now split into:
 
-### Phase 0 acceptance criteria
-In a runnable Godot scene:
-- A **tick counter** advances from a **fixed timestep** (not frame-dependent).
-- **Pause** yields zero ticks.
-- **Fast-forward** increases tick rate by discrete multipliers.
-- A visible **rectangular overworld bounds** is rendered (placeholder debug draw).
+### Step 0.1 — Game Loop + Time Scale
+- Fixed timestep simulation (README example: **10 ticks/sec**)
+- Pause / 1x / 2x / 5x speed
+- Global time counter
+
+**Acceptance criteria (0.1):**
+- Tick-driven logic behaves consistently regardless of FPS
+- Speed multiplier changes simulation rate correctly
+- Pause freezes simulation logic
+
+### Step 0.2 — Basic World Bounds
+- World = simple rectangle
+- Clamp positions inside bounds
+- Debug grid optional
+
+**Acceptance criteria (0.2):**
+- Entities cannot exit map bounds
+- Movement along edges is stable (no jitter)
+
+### Step 0.2 implementation plan (bounds, offsets, framing)
+- **Single source of truth**: introduce a `WorldBounds` component (Godot-side) that owns:
+  - `OuterRect` (the “map rectangle” in world coordinates)
+  - `VisualPaddingPx` (keeps the visible map away from viewport edges)
+  - `ClampInsetPx` (keeps entities away from the border to avoid jitter/collider overlap)
+- **Framing / keeping the map visible**:
+  - Add a `Camera2D` (or configure an existing one) to center on `OuterRect`’s center.
+  - Auto-adjust `Camera2D.Zoom` (or shrink the map) so the full `OuterRect` fits within the viewport **minus `VisualPaddingPx`**.
+- **Clamping rules**:
+  - Clamp entity *center* position into `InnerRect = OuterRect.Grow(-ClampInsetPx)`.
+  - If entities have radius later, clamp using `(ClampInsetPx + entityRadius)` to ensure their collider stays inside.
+- **Border-adjacent “fixed elements”** (towns/POIs):
+  - Place them relative to `InnerRect` corners/edges (e.g. `InnerRect.Position + new Vector2(margin, margin)`) rather than hardcoding coordinates.
+  - This keeps content stable if the map size or padding changes.
 
 ## Architecture choices (why C# here)
 Phase 0 uses **C#-first** to keep the simulation core:
@@ -40,7 +64,7 @@ GDScript can still be used later for rapid UI/debug, but Phase 0’s core is int
 
 ## How to run
 - **Godot**: open the project and run the main scene (set in `project.godot`).
-  - Controls (Phase 0):
+  - Controls (Phase 0 Step 0.1 harness):
     - Bound through **InputMap actions** (see `project.godot [input]`):
       - `sim_toggle_pause` (default: Space)
       - `sim_time_slower` (default: `[`)
@@ -75,4 +99,14 @@ dotnet test
 - The simulation advances in fixed ticks produced by an accumulator-based clock.
 - Real-time `delta` only determines *how many* fixed ticks to execute; simulation state updates should only happen inside ticks.
 - A **catch-up clamp** limits max ticks per frame to avoid spiral-of-death under hitches.
+
+## Current implementation status vs README
+- **Implemented (0.1)**: fixed-tick clock + pause/1x/2x/5x scaling + visible tick/sim time overlay.
+- **Implemented (0.2)**: overworld bounds are rendered as a rectangle; `WorldBounds2D` exposes `OuterRect`/`InnerRect` and provides clamping helpers; camera framing keeps the rect visible with padding.
+- **Implemented (1.1)**: player party placeholder (circle), click-to-move sets target, constant speed movement, stop threshold; movement advances on fixed ticks and clamps to `WorldBounds2D.InnerRect`.
+
+## Phase 1 — Step 1.1 notes (click-to-move)
+- **Determinism rule**: movement uses `IFixedTick.FixedTick(tickDeltaSeconds)` called by `SimulationRoot` on each simulation tick (not `_Process`).
+- **Input rule**: target setting uses an InputMap action (`player_set_move_target`) instead of raw mouse button checks.
+- **Bounds rule**: both target and movement are clamped using `WorldBounds2D.ClampPointToInnerRect(...)` to satisfy Phase 0 Step 0.2 constraints.
 

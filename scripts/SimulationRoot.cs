@@ -3,21 +3,23 @@ using Warband.Core;
 
 public partial class SimulationRoot : Node2D
 {
-	[Export] public int TicksPerSecond { get; set; } = 60;
+	// README Phase 0 Step 0.1 example: 10 ticks/sec.
+	[Export] public int TicksPerSecond { get; set; } = 10;
 	[Export] public int MaxTicksPerFrame { get; set; } = 120;
-
-	[Export] public Vector2 BoundsCenter { get; set; } = Vector2.Zero;
-	[Export] public Vector2 BoundsSize { get; set; } = new(1200, 800);
-
-	[Export] public Color BoundsColor { get; set; } = new(0.2f, 0.8f, 1.0f, 1.0f);
-	[Export] public float BoundsLineWidth { get; set; } = 3f;
 
 	private FixedTickClock? _clock;
 	private int _timeScaleIndex = 1; // 1x
+	private Label? _debugLabel;
+	private Label? _debugHintLabel;
+
+	[Export] public NodePath DebugLabelPath { get; set; } = new("");
+	[Export] public NodePath DebugHintLabelPath { get; set; } = new("");
 
 	public override void _Ready()
 	{
 		_clock = new FixedTickClock(TicksPerSecond);
+		_debugLabel = GetNodeOrNull<Label>(DebugLabelPath);
+		_debugHintLabel = GetNodeOrNull<Label>(DebugHintLabelPath);
 		QueueRedraw();
 	}
 
@@ -31,10 +33,13 @@ public partial class SimulationRoot : Node2D
 			maxTicksThisAdvance: MaxTicksPerFrame);
 
 		for (var i = 0; i < produced; i++)
-			OnTick();
+			OnTick(_clock.TickDeltaSeconds);
 
-		// Keep the overlay responsive; bounds are static but the label changes.
-		QueueRedraw();
+		if (_clock != null)
+		{
+			_debugLabel?.SetText($"Ticks: {_clock.TotalTicks}  |  SimTime: {_clock.SimTimeSeconds:0.000}s  |  Scale: {TimeScale.FromIndex(_timeScaleIndex)}x");
+			_debugHintLabel?.SetText("Pause: sim_toggle_pause  |  Slower/Faster: sim_time_slower / sim_time_faster  |  Move: click");
+		}
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -55,26 +60,17 @@ public partial class SimulationRoot : Node2D
 		}
 	}
 
-	private void OnTick()
+	private void OnTick(double tickDeltaSeconds)
 	{
-		// Phase 0: no world state yet; tick count/time are shown via overlay.
+		foreach (var child in GetChildren())
+		{
+			if (child is IFixedTick tickable)
+				tickable.FixedTick(tickDeltaSeconds);
+		}
 	}
 
 	public override void _Draw()
 	{
-		var rect = new Rect2(BoundsCenter - (BoundsSize / 2f), BoundsSize);
-		DrawRect(rect, BoundsColor, filled: false, width: BoundsLineWidth);
-
-		if (_clock != null)
-		{
-			var font = ThemeDB.FallbackFont;
-			var fontSize = ThemeDB.FallbackFontSize;
-
-			var text = $"Ticks: {_clock.TotalTicks}  |  SimTime: {_clock.SimTimeSeconds:0.000}s  |  Scale: {TimeScale.FromIndex(_timeScaleIndex)}x";
-			DrawString(font, new Vector2(16, 28), text, HorizontalAlignment.Left, -1, fontSize, new(1, 1, 1, 1));
-
-			var hint = "Pause: sim_toggle_pause  |  Slower/Faster: sim_time_slower / sim_time_faster";
-			DrawString(font, new Vector2(16, 52), hint, HorizontalAlignment.Left, -1, fontSize, new(1, 1, 1, 0.85f));
-		}
+		// Debug overlay is drawn in screen-space via a CanvasLayer (see Main.tscn).
 	}
 }
