@@ -85,6 +85,15 @@ dotnet test
   - Persist user bindings in a config file (e.g. `user://settings.cfg`) and apply them on boot.
 - Avoid using `_UnhandledInput` to inspect raw key events unless you are implementing a remap UI that needs to capture “next key pressed”.
 
+### Debug UI best practice: show resolved bindings
+- The on-screen debug overlay should **not** print action names (e.g. `sim_toggle_pause`) because those are not user-facing.
+- Instead, resolve current bindings from the InputMap and render them:
+  - `InputMap.ActionGetEvents(action)` → list bound `InputEvent`s
+  - Convert to a friendly string (examples):
+    - `InputEventKey` → `OS.GetKeycodeString(key.Keycode)` plus modifiers (`Ctrl+`, `Alt+`, …)
+    - `InputEventMouseButton` → `LMB`/`RMB`/etc
+- This keeps debug output correct automatically after future key remapping.
+
 ### Suggested future implementation plan (key remapping)
 - Create a small service (e.g. `scripts/InputRemapService.cs`) that:
   - Knows the canonical action list (Phase 0+: sim + later player movement, camera, UI).
@@ -109,4 +118,20 @@ dotnet test
 - **Determinism rule**: movement uses `IFixedTick.FixedTick(tickDeltaSeconds)` called by `SimulationRoot` on each simulation tick (not `_Process`).
 - **Input rule**: target setting uses an InputMap action (`player_set_move_target`) instead of raw mouse button checks.
 - **Bounds rule**: both target and movement are clamped using `WorldBounds2D.ClampPointToInnerRect(...)` to satisfy Phase 0 Step 0.2 constraints.
+
+## Phase 1 — Step 1.2 notes (speed model)
+- Implemented README formula: \(speed = baseSpeed / (1 + partySize * k)\).
+- `PlayerParty` now exposes:
+  - `BaseSpeedPxPerSec`
+  - `PartySize`
+  - `PartySizePenaltyK`
+  - `CurrentSpeedPxPerSec` (computed)
+- Debug/testing support:
+  - Added actions `party_size_decrease` / `party_size_increase` (defaults: `PageDown` / `PageUp`) to adjust `PartySize` at runtime.
+  - Debug overlay shows current **PartySize** and computed **Speed**.
+- Implementation note:
+  - Party size changes are polled in `SimulationRoot._Process` (using `Input.IsActionJustPressed`) so the hotkeys still work even if UI layers consume arrow key events.
+- Debug binding display:
+  - For keys, debug uses `InputEventKey.AsText()` so special keys like arrows render correctly (and modifiers are accurate).
+- Determinism: speed affects movement only inside `FixedTick(...)`, preserving Phase 0 tick-driven behavior.
 

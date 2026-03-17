@@ -2,8 +2,21 @@ using Godot;
 
 public partial class PlayerParty : Area2D, IFixedTick
 {
+    // Phase 1 Step 1.2: speed = baseSpeed / (1 + partySize * k)
     [Export(PropertyHint.Range, "1,2000,1")]
-    public float MoveSpeedPxPerSec { get; set; } = 220f; // Placeholder for Step 1.2
+    public float BaseSpeedPxPerSec { get; set; } = 260f;
+
+    [Export(PropertyHint.Range, "0,500,1")]
+    public int PartySize { get; set; } = 10;
+
+    [Export(PropertyHint.Range, "0,1,0.001")]
+    public float PartySizePenaltyK { get; set; } = 0.02f;
+
+    [Export(PropertyHint.Range, "0,500,1")]
+    public int PartySizeMin { get; set; } = 0;
+
+    [Export(PropertyHint.Range, "0,500,1")]
+    public int PartySizeMax { get; set; } = 200;
 
     [Export(PropertyHint.Range, "0.5,64,0.5")]
     public float StopThresholdPx { get; set; } = 6f;
@@ -18,6 +31,10 @@ public partial class PlayerParty : Area2D, IFixedTick
     private WorldBounds2D? _bounds;
     private Vector2 _target;
     private bool _hasTarget;
+    private bool _draggingTarget;
+
+    public float CurrentSpeedPxPerSec =>
+        BaseSpeedPxPerSec / (1f + Mathf.Max(0, PartySize) * PartySizePenaltyK);
 
     public override void _Ready()
     {
@@ -28,10 +45,23 @@ public partial class PlayerParty : Area2D, IFixedTick
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (!Input.IsActionJustPressed(InputActions.PlayerSetMoveTarget)) return;
+        if (Input.IsActionJustPressed(InputActions.PlayerSetMoveTarget))
+        {
+            _draggingTarget = true;
+            SetTarget(GetGlobalMousePosition());
+            return;
+        }
 
-        var worldMouse = GetGlobalMousePosition();
-        SetTarget(worldMouse);
+        if (Input.IsActionJustReleased(InputActions.PlayerSetMoveTarget))
+        {
+            _draggingTarget = false;
+            return;
+        }
+
+        if (_draggingTarget && @event is InputEventMouseMotion)
+        {
+            SetTarget(GetGlobalMousePosition());
+        }
     }
 
     public void FixedTick(double tickDeltaSeconds)
@@ -50,7 +80,7 @@ public partial class PlayerParty : Area2D, IFixedTick
             return;
         }
 
-        var step = (float)(MoveSpeedPxPerSec * tickDeltaSeconds);
+        var step = (float)(CurrentSpeedPxPerSec * tickDeltaSeconds);
         var newPos = dist <= step ? _target : pos + (toTarget / dist) * step;
         GlobalPosition = Clamp(newPos);
         QueueRedraw();
