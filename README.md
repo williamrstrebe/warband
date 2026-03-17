@@ -5,6 +5,8 @@ Technical prototype focused on validating the **core systemic gameplay loop** of
 The project prioritizes **simulation, emergence, and testability**.  
 All visuals are placeholders (colored shapes, simple colliders).
 
+** We are currently working/finishing phase 1.**
+
 ---
 
 ## Core Goals
