@@ -1,82 +1,60 @@
-[gd_scene load_steps=5 format=3 uid="uid://c8v1v7k8qf0o7"]
+[gd_scene format=3 uid="uid://c8v1v7k8qf0o7"]
 
-[ext_resource type="Script" path="res://scripts/SimulationRoot.cs" id="1_3b8p0"]
-[ext_resource type="Script" path="res://scripts/WorldBounds2D.cs" id="2_jn6a6"]
-[ext_resource type="Script" path="res://scripts/WorldCameraFit2D.cs" id="3_yw2m1"]
-[ext_resource type="Script" path="res://scripts/PlayerParty.cs" id="4_kc1w5"]
+[ext_resource type="Script" uid="uid://df1ujdqcenpfn" path="res://scripts/SimulationRoot.cs" id="1_3b8p0"]
+[ext_resource type="Script" uid="uid://dknsjccj5ek2p" path="res://scripts/WorldBounds2D.cs" id="2_jn6a6"]
+[ext_resource type="Script" uid="uid://r7tw4dx75m0l" path="res://scripts/WorldCameraFit2D.cs" id="3_yw2m1"]
+[ext_resource type="Script" uid="uid://cka6075o7o5fk" path="res://scripts/PlayerParty.cs" id="4_kc1w5"]
+[ext_resource type="Script" uid="uid://celpy1g1og77c" path="res://scripts/RandomAI.cs" id="5_vcsgt"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1514129842]
 
-[node name="WorldBounds" type="Node2D" parent="."]
+[node name="WorldBounds" type="Node2D" parent="." unique_id=545094339]
 script = ExtResource("2_jn6a6")
-Size = Vector2(1200, 800)
-ClampInsetPx = 16.0
-DrawGrid = false
 
-[node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(0, 0)
-current = true
+[node name="Camera2D" type="Camera2D" parent="." unique_id=412245862]
 
-[node name="WorldCameraFit" type="Node" parent="."]
+[node name="WorldCameraFit" type="Node" parent="." unique_id=1854914696]
 script = ExtResource("3_yw2m1")
 CameraPath = NodePath("../Camera2D")
 WorldBoundsPath = NodePath("../WorldBounds")
 VisualPaddingPx = 64.0
 
-[node name="DebugCanvas" type="CanvasLayer" parent="."]
+[node name="DebugCanvas" type="CanvasLayer" parent="." unique_id=741826329]
 layer = 10
 
-[node name="DebugTop" type="Control" parent="DebugCanvas"]
+[node name="DebugTop" type="Control" parent="DebugCanvas" unique_id=1792954502]
+layout_mode = 3
 anchors_preset = 10
-anchor_left = 0.0
-anchor_top = 0.0
 anchor_right = 1.0
-anchor_bottom = 0.0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="TickLabel" type="Label" parent="DebugCanvas/DebugTop"]
-anchors_preset = 10
-anchor_left = 0.0
-anchor_top = 0.0
+[node name="TickLabel" type="Label" parent="DebugCanvas/DebugTop" unique_id=380658869]
+layout_mode = 0
 anchor_right = 1.0
-anchor_bottom = 0.0
-offset_left = 0.0
 offset_top = 10.0
-offset_right = 0.0
-offset_bottom = 0.0
 grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 horizontal_alignment = 1
-text = ""
 
-[node name="HintLabel" type="Label" parent="DebugCanvas/DebugTop"]
-anchors_preset = 10
-anchor_left = 0.0
-anchor_top = 0.0
+[node name="HintLabel" type="Label" parent="DebugCanvas/DebugTop" unique_id=804928612]
+layout_mode = 0
 anchor_right = 1.0
-anchor_bottom = 0.0
-offset_left = 0.0
 offset_top = 40.0
-offset_right = 0.0
-offset_bottom = 0.0
 grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 1, 1, 0.85)
 horizontal_alignment = 1
-text = ""
 
-[node name="SimulationRoot" type="Node2D" parent="."]
+[node name="SimulationRoot" type="Node2D" parent="." unique_id=1574079505]
 script = ExtResource("1_3b8p0")
 DebugLabelPath = NodePath("../DebugCanvas/DebugTop/TickLabel")
 DebugHintLabelPath = NodePath("../DebugCanvas/DebugTop/HintLabel")
 
-[node name="Player" type="Area2D" parent="SimulationRoot"]
+[node name="Player" type="Area2D" parent="SimulationRoot" unique_id=191847144]
 script = ExtResource("4_kc1w5")
 WorldBoundsPath = NodePath("../../WorldBounds")
-PartySize = 10
-PartySizePenaltyK = 0.02
 
+[node name="AI" type="Area2D" parent="SimulationRoot" unique_id=305791616]
+script = ExtResource("5_vcsgt")
+Color = Color(0.972549, 0.17254902, 0.24705882, 1)
+WorldBoundsPath = NodePath("../../WorldBounds")

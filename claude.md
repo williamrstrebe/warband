@@ -65,10 +65,10 @@ GDScript can still be used later for rapid UI/debug, but Phase 0’s core is int
 ## How to run
 - **Godot**: open the project and run the main scene (set in `project.godot`).
   - Controls (Phase 0 Step 0.1 harness):
-    - Bound through **InputMap actions** (see `project.godot [input]`):
-      - `sim_toggle_pause` (default: Space)
-      - `sim_time_slower` (default: `[`)
-      - `sim_time_faster` (default: `]`)
+	- Bound through **InputMap actions** (see `project.godot [input]`):
+	  - `sim_toggle_pause` (default: Space)
+	  - `sim_time_slower` (default: `[`)
+	  - `sim_time_faster` (default: `]`)
 - **Tests** (core logic): from repo root:
 
 ```bash
@@ -90,8 +90,8 @@ dotnet test
 - Instead, resolve current bindings from the InputMap and render them:
   - `InputMap.ActionGetEvents(action)` → list bound `InputEvent`s
   - Convert to a friendly string (examples):
-    - `InputEventKey` → `OS.GetKeycodeString(key.Keycode)` plus modifiers (`Ctrl+`, `Alt+`, …)
-    - `InputEventMouseButton` → `LMB`/`RMB`/etc
+	- `InputEventKey` → `OS.GetKeycodeString(key.Keycode)` plus modifiers (`Ctrl+`, `Alt+`, …)
+	- `InputEventMouseButton` → `LMB`/`RMB`/etc
 - This keeps debug output correct automatically after future key remapping.
 
 ### Suggested future implementation plan (key remapping)
@@ -134,4 +134,3 @@ dotnet test
 - Debug binding display:
   - For keys, debug uses `InputEventKey.AsText()` so special keys like arrows render correctly (and modifiers are accurate).
 - Determinism: speed affects movement only inside `FixedTick(...)`, preserving Phase 0 tick-driven behavior.
-

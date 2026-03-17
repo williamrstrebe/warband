@@ -1,6 +1,7 @@
 using Godot;
+using System;
 
-public partial class PlayerParty : Area2D, IFixedTick
+public partial class RandomAI : Area2D, IFixedTick
 {
 	// Phase 1 Step 1.2: speed = baseSpeed / (1 + partySize * k)
 	[Export(PropertyHint.Range, "1,2000,1")]
@@ -24,7 +25,7 @@ public partial class PlayerParty : Area2D, IFixedTick
 	[Export(PropertyHint.Range, "2,128,1")]
 	public float RadiusPx { get; set; } = 10f;
 
-	[Export] public Color Color { get; set; } = new(1.0f, 0.85f, 0.2f, 1.0f);
+	[Export] public Color Color { get; set; } = new(0.97f, 0.17f, 0.24f, 1.0f);
 
 	[Export] public NodePath WorldBoundsPath { get; set; } = new("");
 
@@ -32,6 +33,9 @@ public partial class PlayerParty : Area2D, IFixedTick
 	private Vector2 _target;
 	private bool _hasTarget;
 	private bool _draggingTarget;
+	
+	private int _retargetTicksLeft;
+	private static RandomNumberGenerator rng = new RandomNumberGenerator();
 
 	public float CurrentSpeedPxPerSec =>
 		BaseSpeedPxPerSec / (1f + Mathf.Max(0, PartySize) * PartySizePenaltyK);
@@ -39,34 +43,41 @@ public partial class PlayerParty : Area2D, IFixedTick
 	public override void _Ready()
 	{
 		_bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
-		_target = GlobalPosition;
+		GD.Print($"New target1: {_target}");
+		_target = GetRandomPoint(_bounds);
+		GD.Print($"New target2: {_target}");
+		SetTarget(_target);
+		_retargetTicksLeft = GetRandomRetargetTicks();
 		QueueRedraw();
 	}
-
-	public override void _UnhandledInput(InputEvent @event)
+	
+	private Vector2 GetRandomPoint(WorldBounds2D bounds)
 	{
-		if (Input.IsActionJustPressed(InputActions.PlayerSetMoveTarget))
-		{
-			_draggingTarget = true;
-			SetTarget(GetGlobalMousePosition());
-			return;
-		}
+		Rect2 r = bounds.InnerRect;
 
-		if (Input.IsActionJustReleased(InputActions.PlayerSetMoveTarget))
-		{
-			_draggingTarget = false;
-			return;
-		}
-
-		if (_draggingTarget && @event is InputEventMouseMotion)
-		{
-			SetTarget(GetGlobalMousePosition());
-		}
+		return new Vector2(
+			rng.RandfRange(r.Position.X, r.End.X),
+			rng.RandfRange(r.Position.Y, r.End.Y)
+		);
+	}
+	
+	private int GetRandomRetargetTicks()
+	{
+		float seconds = rng.RandfRange(1f, 3f);
+		return (int)(seconds * 10);
 	}
 
-	public void FixedTick(double tickDeltaSeconds)
-	{
+	public void FixedTick(double tickDeltaSeconds){
 		if (!_hasTarget) return;
+		
+		_retargetTicksLeft--;
+
+		_target = GetRandomPoint(_bounds);
+		GD.Print($"New target3: {_target}");
+		if (_retargetTicksLeft <= 0)
+		{
+			_retargetTicksLeft = GetRandomRetargetTicks();
+		}
 
 		var pos = GlobalPosition;
 		var toTarget = _target - pos;
@@ -102,12 +113,5 @@ public partial class PlayerParty : Area2D, IFixedTick
 	public override void _Draw()
 	{
 		DrawCircle(Vector2.Zero, RadiusPx, Color);
-
-		if (_hasTarget)
-		{
-			var localTarget = ToLocal(_target);
-			DrawCircle(localTarget, 4f, new Color(1, 1, 1, 0.9f));
-			DrawLine(Vector2.Zero, localTarget, new Color(1, 1, 1, 0.35f), 1.5f);
-		}
 	}
 }

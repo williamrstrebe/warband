@@ -1,5 +1,4 @@
 public interface IFixedTick
 {
-    void FixedTick(double tickDeltaSeconds);
+	void FixedTick(double tickDeltaSeconds);
 }
-

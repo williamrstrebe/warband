@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="Warband"
-config/features=PackedStringArray("4.6", "GL Compatibility")
-config/icon="res://icon.svg"
 run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.6", "C#", "GL Compatibility")
+config/icon="res://icon.svg"
 
 [dotnet]
 
@@ -23,32 +23,33 @@ project/assembly_name="Warband"
 
 sim_toggle_pause={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":32,"physical_keycode":0,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":32,"physical_keycode":0,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)
+]
 }
-
 sim_time_slower={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":91,"physical_keycode":0,"key_label":0,"unicode":91,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":91,"physical_keycode":0,"key_label":0,"unicode":91,"location":0,"echo":false,"script":null)
+]
 }
-
 sim_time_faster={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":93,"physical_keycode":0,"key_label":0,"unicode":93,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":93,"physical_keycode":0,"key_label":0,"unicode":93,"location":0,"echo":false,"script":null)
+]
 }
-
 player_set_move_target={
 "deadzone": 0.5,
-"events": [Object(InputEventMouseButton,"resource_local_to_scene":false,"device":-1,"button_index":1,"pressure":0.0,"pressed":false,"canceled":false,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_mask":0,"double_click":false,"script":null)]
+"events": [Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":0,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":1,"canceled":false,"pressed":false,"double_click":false,"script":null)
+]
 }
-
 party_size_increase={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":69,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":69,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
-
 party_size_decrease={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"device":-1,"window_id":0,"pressed":false,"keycode":81,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":81,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
 
 [physics]

@@ -723,7 +723,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\William\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d364ff7aba7fbddaa0d587b5bd3286d3\\nuget": {},
+    "C:\\Users\\William\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
@@ -732,7 +732,7 @@
       "projectUniqueName": "E:\\warband\\tests\\Warband.Core.Tests\\Warband.Core.Tests.csproj",
       "projectName": "Warband.Core.Tests",
       "projectPath": "E:\\warband\\tests\\Warband.Core.Tests\\Warband.Core.Tests.csproj",
-      "packagesPath": "C:\\Users\\William\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d364ff7aba7fbddaa0d587b5bd3286d3\\nuget",
+      "packagesPath": "C:\\Users\\William\\.nuget\\packages\\",
       "outputPath": "E:\\warband\\tests\\Warband.Core.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
