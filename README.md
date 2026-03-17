@@ -5,7 +5,7 @@ Technical prototype focused on validating the **core systemic gameplay loop** of
 The project prioritizes **simulation, emergence, and testability**.  
 All visuals are placeholders (colored shapes, simple colliders).
 
-**We are currently working/finishing phase 1.**
+**CURRENT STATUS: finishing phase 1.**
 
 ---
 
@@ -32,18 +32,11 @@ All visuals are placeholders (colored shapes, simple colliders).
 
 ---
 
-# Overworld Army Sandbox – Technical Prototype Roadmap
-
-General roadmap for a **Warband-like overworld sandbox prototype**.  
-Focus: **systems validation, emergence and deterministic simulation.**
-
----
-
-# Prototype Roadmap — Overworld Army Sandbox (Technical Focus)
+# Technical Prototype Roadmap
 
 This document describes a **technical-first prototype roadmap** for building an overworld army sandbox game (Mount-and-Blade-like structure) using **placeholder visuals and fully testable incremental steps**.
 
-The objective is to validate **systems, simulation and emergent gameplay** before investing in visuals, content or polish.
+The objective is to validate **systems, simulation, and emergent gameplay** before investing in visuals, content, or polish.
 
 All visuals are placeholders:
 
@@ -71,7 +64,7 @@ The prototype must remain **playable at every phase.**
 
 ### Test criteria
 
-- Objects move same distance regardless of FPS  
+- Objects move the same distance regardless of FPS  
 - Speed multiplier changes simulation rate correctly  
 - Pause freezes AI + player logic  
 
@@ -79,7 +72,7 @@ The prototype must remain **playable at every phase.**
 
 ## Step 0.2 — Basic World Bounds
 
-**Goal:** create navigable overworld container.
+**Goal:** create a navigable overworld container.
 
 ### Implement
 
