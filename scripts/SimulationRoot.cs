@@ -17,10 +17,21 @@ public partial class SimulationRoot : Node2D
 	[Export] public NodePath DebugHintLabelPath { get; set; } = new("");
 	[Export] public NodePath WorldBoundsPath { get; set; } = new("");
 	[Export] public NodePath EncounterModalPath { get; set; } = new("");
+	[Export] public NodePath TownModalPath { get; set; } = new("");
 
 	// Phase 2 Step 2.1: spawn N roaming AI parties.
 	[Export(PropertyHint.Range, "0,500,1")]
 	public int AiCount { get; set; } = 0;
+
+	// Phase 4 Step 4.1: simple towns + recruit stub.
+	[Export(PropertyHint.Range, "0,50,1")]
+	public int TownCount { get; set; } = 2;
+
+	[Export(PropertyHint.Range, "0,9999,1")]
+	public int RecruitCostGold { get; set; } = 3;
+
+	[Export(PropertyHint.Range, "1,100,1")]
+	public int RecruitTroopsAmount { get; set; } = 5;
 
 	// From an AI party node (child of SimulationRoot), the WorldBounds node in Main.tscn is at ../../WorldBounds.
 	// If the scene structure changes, update this in the editor.
@@ -31,6 +42,10 @@ public partial class SimulationRoot : Node2D
 	private EncounterModal? _encounterModal;
 	private RandomAI? _encounterAi;
 	private int _encounterCooldownTicksLeft;
+
+	private TownModal? _townModal;
+	private Town? _activeTown;
+	private int _townCooldownTicksLeft;
 
 	public override void _Ready()
 	{
@@ -44,7 +59,14 @@ public partial class SimulationRoot : Node2D
 			_encounterModal.AutoResolvePressed += () => ResolveEncounter(EncounterChoice.AutoResolve);
 			_encounterModal.FleePressed += () => ResolveEncounter(EncounterChoice.Flee);
 		}
+		_townModal = GetNodeOrNull<TownModal>(TownModalPath);
+		if (_townModal != null)
+		{
+			_townModal.RecruitPressed += TryRecruitFromTown;
+			_townModal.LeavePressed += LeaveTown;
+		}
 		_cachedControlsText = BuildControlsText();
+		SpawnTowns();
 		SpawnAiParties();
 		QueueRedraw();
 	}
@@ -73,7 +95,9 @@ public partial class SimulationRoot : Node2D
 
 		if (_clock != null)
 		{
-			var partyText = player == null ? "" : $"  |  Party: {player.PartySize}  |  Speed: {player.CurrentSpeedPxPerSec:0.##} px/s";
+			var partyText = player == null
+				? ""
+				: $"  |  Party: {player.PartySize}  |  Morale: {player.Morale}  |  Gold: {player.Gold}  |  Speed: {player.CurrentSpeedPxPerSec:0.##} px/s";
 			_debugLabel?.SetText($"Ticks: {_clock.TotalTicks}  |  SimTime: {_clock.SimTimeSeconds:0.000}s  |  Scale: {TimeScale.FromIndex(_timeScaleIndex)}x{partyText}");
 			_debugHintLabel?.SetText(_cachedControlsText ?? BuildControlsText());
 		}
@@ -107,8 +131,105 @@ public partial class SimulationRoot : Node2D
 
 		if (_encounterCooldownTicksLeft > 0)
 			_encounterCooldownTicksLeft--;
+		if (_townCooldownTicksLeft > 0)
+			_townCooldownTicksLeft--;
 
+		TryEnterTown();
 		TryStartEncounter();
+	}
+
+	private void TryEnterTown()
+	{
+		// Phase 4 Step 4.1: entering a town opens a simple recruit UI.
+		if (_activeTown != null)
+			return;
+		if (_townCooldownTicksLeft > 0)
+			return;
+		if (_timeScaleIndex == 0)
+			return;
+
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null)
+			return;
+
+		foreach (var child in GetChildren())
+		{
+			if (child is not Town town)
+				continue;
+
+			// Treat town as a square with half-size; use a circle approximation for overlap test (good enough for stub).
+			var threshold = player.RadiusPx + town.HalfSizePx;
+			if (player.GlobalPosition.DistanceTo(town.GlobalPosition) <= threshold)
+			{
+				_activeTown = town;
+				_timeScaleIndex = 0;
+				UpdateTownModalText();
+				_townModal?.ShowTown(town.TownName, _cachedTownBody ?? "");
+				return;
+			}
+		}
+	}
+
+	private string? _cachedTownBody;
+
+	private void UpdateTownModalText()
+	{
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null || _activeTown == null)
+			return;
+
+		_cachedTownBody =
+			$"Gold: {player.Gold}\n" +
+			$"Party: {player.PartySize}\n\n" +
+			$"Recruit +{RecruitTroopsAmount} troops for {RecruitCostGold} gold.";
+	}
+
+	private void TryRecruitFromTown()
+	{
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null || _activeTown == null)
+			return;
+
+		if (player.Gold < RecruitCostGold)
+		{
+			GD.Print("[Town] Not enough gold to recruit.");
+			UpdateTownModalText();
+			_townModal?.ShowTown(_activeTown.TownName, _cachedTownBody ?? "");
+			return;
+		}
+
+		player.Gold = Mathf.Max(0, player.Gold - RecruitCostGold);
+		player.PartySize = Mathf.Clamp(player.PartySize + RecruitTroopsAmount, player.PartySizeMin, player.PartySizeMax);
+		GD.Print($"[Town] Recruited +{RecruitTroopsAmount} for {RecruitCostGold} gold.");
+		UpdateTownModalText();
+		_townModal?.ShowTown(_activeTown.TownName, _cachedTownBody ?? "");
+	}
+
+	private void LeaveTown()
+	{
+		if (_activeTown == null)
+		{
+			_townModal?.HideTown();
+			_timeScaleIndex = 1;
+			return;
+		}
+
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		var bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
+		if (player != null && bounds != null)
+		{
+			// Nudge player away so we don't instantly re-enter.
+			var dir = (player.GlobalPosition - _activeTown.GlobalPosition);
+			if (dir.LengthSquared() < 0.001f)
+				dir = Vector2.Right;
+			dir = dir.Normalized();
+			player.GlobalPosition = bounds.ClampPointToInnerRect(player.GlobalPosition + dir * (player.RadiusPx + _activeTown.HalfSizePx + 10f));
+		}
+
+		_townModal?.HideTown();
+		_timeScaleIndex = 1;
+		_activeTown = null;
+		_townCooldownTicksLeft = Mathf.Max(1, TicksPerSecond / 2);
 	}
 
 	private enum EncounterChoice
@@ -208,12 +329,20 @@ public partial class SimulationRoot : Node2D
 		{
 			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize - 1);
 			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize); // winner keeps size (v1)
+			player.Morale = Mathf.Clamp(player.Morale + 2, 0, 100);
+			player.Gold = Mathf.Max(0, player.Gold + 3);
+			ai.Morale = Mathf.Clamp(ai.Morale - 2, 0, 100);
+			ai.Gold = Mathf.Max(0, ai.Gold - 2);
 			GD.Print($"[Encounter] Player wins. AI now {ai.PartySize}.");
 		}
 		else
 		{
 			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize - 1);
 			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize);
+			player.Morale = Mathf.Clamp(player.Morale - 2, 0, 100);
+			player.Gold = Mathf.Max(0, player.Gold - 2);
+			ai.Morale = Mathf.Clamp(ai.Morale + 2, 0, 100);
+			ai.Gold = Mathf.Max(0, ai.Gold + 3);
 			GD.Print($"[Encounter] Player loses. Player now {player.PartySize}.");
 		}
 
@@ -281,6 +410,38 @@ public partial class SimulationRoot : Node2D
 			var p = GetRandomPoint(bounds.InnerRect);
 			ai.GlobalPosition = p;
 			AddChild(ai);
+		}
+	}
+
+	private void SpawnTowns()
+	{
+		if (TownCount <= 0)
+			return;
+
+		var bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
+		if (bounds == null)
+			return;
+
+		// Place towns near corners of the inner rect so they're always in-bounds and stable.
+		var inner = bounds.InnerRect;
+		var margin = 60f;
+		var positions = new[]
+		{
+			inner.Position + new Vector2(margin, margin),
+			new Vector2(inner.End.X - margin, inner.Position.Y + margin),
+			new Vector2(inner.Position.X + margin, inner.End.Y - margin),
+			inner.End - new Vector2(margin, margin),
+		};
+
+		for (var i = 0; i < TownCount; i++)
+		{
+			var t = new Town
+			{
+				Name = $"Town_{i + 1}",
+				TownName = $"Town {i + 1}",
+			};
+			t.GlobalPosition = positions[i % positions.Length];
+			AddChild(t);
 		}
 	}
 

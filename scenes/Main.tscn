@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://r7tw4dx75m0l" path="res://scripts/WorldCameraFit2D.cs" id="3_yw2m1"]
 [ext_resource type="Script" uid="uid://cka6075o7o5fk" path="res://scripts/PlayerParty.cs" id="4_kc1w5"]
 [ext_resource type="Script" uid="uid://cyw67qjd7w2te" path="res://scripts/EncounterModal.cs" id="6_2k7k1"]
+[ext_resource type="Script" uid="uid://hsjco45sotyr" path="res://scripts/TownModal.cs" id="7_9w0t2"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_vcsgt"]
 
@@ -126,6 +127,7 @@ DebugLabelPath = NodePath("../DebugCanvas/DebugTop/TickLabel")
 DebugHintLabelPath = NodePath("../DebugCanvas/DebugTop/HintLabel")
 WorldBoundsPath = NodePath("../WorldBounds")
 EncounterModalPath = NodePath("../EncounterCanvas/EncounterModal")
+TownModalPath = NodePath("../TownCanvas/TownModal")
 AiCount = 3
 
 [node name="Player" type="Area2D" parent="SimulationRoot" unique_id=191847144]
@@ -135,3 +137,71 @@ WorldBoundsPath = NodePath("../../WorldBounds")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SimulationRoot/Player" unique_id=690790810]
 shape = SubResource("CircleShape2D_vcsgt")
 debug_color = Color(0.39607844, 0.5254902, 0.81960785, 0.972549)
+
+[node name="TownCanvas" type="CanvasLayer" parent="." unique_id=-2061409497]
+layer = 45
+
+[node name="TownModal" type="Control" parent="TownCanvas" unique_id=-2061409496]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("7_9w0t2")
+TitleLabelPath = NodePath("Center/Panel/VBox/Title")
+BodyLabelPath = NodePath("Center/Panel/VBox/Body")
+RecruitButtonPath = NodePath("Center/Panel/VBox/Buttons/Recruit")
+LeaveButtonPath = NodePath("Center/Panel/VBox/Buttons/Leave")
+
+[node name="Backdrop" type="ColorRect" parent="TownCanvas/TownModal" unique_id=-2061409495]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="Center" type="CenterContainer" parent="TownCanvas/TownModal" unique_id=-2061409494]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="TownCanvas/TownModal/Center" unique_id=-2061409493]
+custom_minimum_size = Vector2(520, 220)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="TownCanvas/TownModal/Center/Panel" unique_id=-2061409492]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="TownCanvas/TownModal/Center/Panel/VBox" unique_id=-2061409491]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Town"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="TownCanvas/TownModal/Center/Panel/VBox" unique_id=-2061409490]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.9)
+text = "..."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="TownCanvas/TownModal/Center/Panel/VBox" unique_id=-2061409489]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Recruit" type="Button" parent="TownCanvas/TownModal/Center/Panel/VBox/Buttons" unique_id=-2061409488]
+layout_mode = 2
+text = "Recruit +5"
+
+[node name="Leave" type="Button" parent="TownCanvas/TownModal/Center/Panel/VBox/Buttons" unique_id=-2061409487]
+layout_mode = 2
+text = "Leave"

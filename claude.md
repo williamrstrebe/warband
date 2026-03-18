@@ -195,5 +195,39 @@ dotnet test
 - Flee v1:
   - Guaranteed escape if player speed is higher than AI speed; otherwise a 50% chance.
 
+### Morale + Loot (gold) additions
+- Added `Morale` and `Gold` to both `PlayerParty` and `RandomAI`:
+  - Defaults: `Morale = 10`, `Gold = 0`.
+- Auto-resolve now also updates these values (placeholder-friendly constants):
+  - On **win**: player `Morale += 2`, player `Gold += 3`; AI `Morale -= 2`, AI `Gold -= 2` (clamped).
+  - On **loss**: player `Morale -= 2`, player `Gold -= 2`; AI `Morale += 2`, AI `Gold += 3` (clamped).
+- HUD rule: only the **player** has `Morale`/`Gold` shown on the top debug label; AI keeps values only in vars.
+
+## Phase 4 — Step 4.1 notes (Troop Recruitment Stub)
+- Implemented **town POIs** as `Town` nodes (blue squares) spawned by `SimulationRoot` near the corners of `WorldBounds2D.InnerRect`.
+- When the player overlaps a town:
+  - Simulation pauses (time scale index set to `0`).
+  - A `TownModal` is shown with current player `Gold` and party size.
+  - A **Recruit** button attempts to buy `+5` troops for a gold cost (defaults: `RecruitTroopsAmount = 5`, `RecruitCostGold = 3`).
+  - A **Leave** button closes the modal, resumes simulation, and nudges the player away to prevent immediate re-trigger.
+
 ## Debug readability
 - `PlayerParty` and `RandomAI` now draw the current `PartySize` above each party circle for quick on-map readability.
+
+## OOP refactor — `PartyBase` (shared party mechanics)
+- Introduced `PartyBase : Area2D, IFixedTick` to centralize shared behavior previously duplicated across `PlayerParty` and `RandomAI`.
+- `PartyBase` owns:
+  - Shared exported stats: speed model inputs, `PartySize` bounds, `Morale`, `Gold`, radii, color, bounds path.
+  - Computed speed: `CurrentSpeedPxPerSec`.
+  - Bounds clamping: `Clamp(...)` backed by `WorldBounds2D`.
+  - Collider setup: ensures a body `CollisionShape2D` (reuses any scene-authored collider if present) and creates a detection `Area2D` (`Detection`) with a `CircleShape2D`.
+  - Detection dispatch hooks: `OnPartyDetected/OnPartyLost` virtual methods for subclasses to extend behavior.
+  - Shared tick movement primitive: `TickMoveTowardTarget(...)` plus `SetTarget(...)`.
+  - Shared debug drawing: circle + party size label + optional detection radius ring.
+- `PlayerParty` now focuses only on:
+  - Input (drag-to-set target)
+  - Using `TickMoveTowardTarget(...)` in `FixedTick(...)`
+  - Drawing the move target indicator
+- `RandomAI` now focuses only on:
+  - Wander/Chase/Flee state machine
+  - Overriding party-detection hooks to track the player in range
