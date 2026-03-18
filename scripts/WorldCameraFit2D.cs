@@ -43,14 +43,14 @@ public partial class WorldCameraFit2D : Node
 		available.X = Mathf.Max(1f, available.X);
 		available.Y = Mathf.Max(1f, available.Y);
 
-		// Keep the full rect visible. We choose a zoom that never zooms in beyond 1x;
-		// it will zoom out (zoom < 1) if the map doesn't fit.
+		// Keep the full rect visible. We scale the camera so the whole OuterRect fits
+		// inside the viewport minus padding. Larger viewports will zoom IN (> 1),
+		// smaller viewports will zoom OUT (< 1).
 		var scaleX = available.X / rect.Size.X;
 		var scaleY = available.Y / rect.Size.Y;
 		var fitScale = Mathf.Min(scaleX, scaleY);
 		// In Godot, Camera2D.Zoom < 1 zooms OUT, > 1 zooms IN.
-		// If the map doesn't fit (fitScale < 1), zoom out to fit. Otherwise keep 1x.
-		var zoomFactor = Mathf.Min(1f, fitScale);
+		var zoomFactor = fitScale;
 		_camera.Zoom = new Vector2(zoomFactor, zoomFactor);
 		_camera.MakeCurrent();
 	}

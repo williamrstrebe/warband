@@ -203,6 +203,36 @@ dotnet test
   - On **loss**: player `Morale -= 2`, player `Gold -= 2`; AI `Morale += 2`, AI `Gold += 3` (clamped).
 - HUD rule: only the **player** has `Morale`/`Gold` shown on the top debug label; AI keeps values only in vars.
 
+## Phase 3 extension — AI vs AI Battles (2026-03-18)
+- `RandomAI` now can detect other `RandomAI` parties inside its detection radius and will:
+  - **Chase** only targets that are **weaker** (by `StrengthValue`).
+  - Continue using the tick-driven state machine (`FixedTick(...)`) for deterministic behavior.
+- `SimulationRoot` now resolves AI vs AI combat automatically when two `RandomAI` parties **overlap**:
+  - Winner determination: higher `StrengthValue` wins (tie-broken by gold, then instance id).
+  - Transfer rules (spec):
+	- Winner gains `loser.PartySize / 2` troops.
+	- Winner gains **all** `loser.Gold`.
+	- Loser is destroyed via `QueueFree()`.
+  - Consistency: after absorption, winner’s `StrengthValue` is set to `winner.PartySize` so future chase/battle decisions remain aligned.
+- HUD rule preserved:
+  - Only the player’s `PartySize`, `Morale`, and `Gold` are displayed on-screen (AI values remain internal vars).
+
+## Phase 3 extension follow-up — Correct weaker-target adaptation (2026-03-18)
+- When two AIs start at equal strength, the initial `AreaEntered`-based detection does not select a weaker target.
+- However, after AI-vs-AI battles, troop size (and thus `StrengthValue`) changes while `AreaEntered` may not fire again.
+- Fix: `RandomAI.FixedTick(...)` now re-evaluates weaker targets every tick:
+  - Clears the stored `_weakerAiInRange` if the target is no longer weaker or drifts outside range.
+  - If `_weakerAiInRange` is null, it scans sibling `RandomAI` instances to acquire the nearest AI that is currently weaker and inside `DetectionRadiusPx`.
+
+## Phase 3 extension follow-up — Battle winner rests (2026-03-18)
+- After AI-vs-AI battles resolve, the **winner AI** rests for a short period (“reused idle” behavior).
+- Implementation:
+  - `RandomAI` gained `StartRestTicks(int ticks)`.
+  - `SimulationRoot.ResolveAiBattle(...)` calls `winner.StartRestTicks(...)` after troop/gold transfer.
+  - While resting, `RandomAI.FixedTick(...)` clears its target and returns early, so it stays idle even if new weaker enemies are detected.
+- Idle response to approaching enemies:
+  - When not resting, an AI in `WanderIdle` will switch to `Chase` on the next tick if a weaker enemy AI is within detection range (because `_weakerAiInRange` is re-acquired/revalidated every tick).
+
 ## Phase 4 — Step 4.1 notes (Troop Recruitment Stub)
 - Implemented **town POIs** as `Town` nodes (blue squares) spawned by `SimulationRoot` near the corners of `WorldBounds2D.InnerRect`.
 - When the player overlaps a town:
@@ -231,3 +261,7 @@ dotnet test
 - `RandomAI` now focuses only on:
   - Wander/Chase/Flee state machine
   - Overriding party-detection hooks to track the player in range
+
+## Viewport defaults (1920 x 1080)
+- Updated `project.godot` to default the game window viewport size to `1920x1080`.
+- Updated `WorldCameraFit2D` so the camera zoom uses the full fit scale (it can zoom IN on larger viewports and zoom OUT on smaller ones). This ensures `WorldBounds2D` framing scales correctly with the selected viewport size while keeping the full `OuterRect` visible with the configured `VisualPaddingPx`.

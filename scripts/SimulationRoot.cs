@@ -135,7 +135,91 @@ public partial class SimulationRoot : Node2D
 			_townCooldownTicksLeft--;
 
 		TryEnterTown();
+		TryResolveAiBattles();
 		TryStartEncounter();
+	}
+
+	private void TryResolveAiBattles()
+	{
+		if (_timeScaleIndex == 0)
+			return; // paused world (encounter/town)
+
+		// Collect AIs (skip queued-for-deletion) so we don't try to resolve battles with already-dying parties.
+		var ais = new List<RandomAI>();
+		foreach (var child in GetChildren())
+		{
+			if (child is RandomAI ai && !ai.IsQueuedForDeletion())
+				ais.Add(ai);
+		}
+
+		// Pairwise overlap check. Counts are small in Phase 2/3, so O(N^2) is fine.
+		for (var i = 0; i < ais.Count; i++)
+		{
+			for (var j = i + 1; j < ais.Count; j++)
+			{
+				var a = ais[i];
+				var b = ais[j];
+				if (a == null || b == null) continue;
+				if (a.IsQueuedForDeletion() || b.IsQueuedForDeletion()) continue;
+
+				var dist = a.GlobalPosition.DistanceTo(b.GlobalPosition);
+				var threshold = a.RadiusPx + b.RadiusPx;
+				if (dist > threshold)
+					continue;
+
+				ResolveAiBattle(a, b);
+			}
+		}
+	}
+
+	private void ResolveAiBattle(RandomAI a, RandomAI b)
+	{
+		// Winner = stronger by strength proxy.
+		RandomAI winner;
+		RandomAI loser;
+
+		if (a.StrengthValue > b.StrengthValue)
+		{
+			winner = a;
+			loser = b;
+		}
+		else if (b.StrengthValue > a.StrengthValue)
+		{
+			winner = b;
+			loser = a;
+		}
+		else
+		{
+			// Tie-breaker: higher gold wins; then higher instance id.
+			if (a.Gold != b.Gold)
+			{
+				if (a.Gold > b.Gold) { winner = a; loser = b; }
+				else { winner = b; loser = a; }
+			}
+			else if (a.GetInstanceId() > b.GetInstanceId())
+			{
+				winner = a;
+				loser = b;
+			}
+			else
+			{
+				winner = b;
+				loser = a;
+			}
+		}
+
+		var halfLoserTroops = loser.PartySize / 2; // spec: half the troops
+		winner.PartySize = Mathf.Clamp(winner.PartySize + halfLoserTroops, winner.PartySizeMin, winner.PartySizeMax);
+		winner.StrengthValue = winner.PartySize; // keep proxy consistent with absorbed troops
+
+		winner.Gold = Mathf.Max(0, winner.Gold + loser.Gold); // all gold
+		winner.QueueRedraw(); // debug label must update immediately
+		//loser.QueueRedraw(); ignored because loser will be freed - do not remove for now
+		// Winner rests after battle so it doesn't immediately re-engage.
+		var restTicks = Mathf.Max(1, (int)(TicksPerSecond * 2.5f));
+		winner.StartRestTicks(restTicks);
+		loser.QueueFree();
+		GD.Print($"[AI Battle] {winner.Name} won {loser.Name} (gain {halfLoserTroops} troops, +{loser.Gold} gold).");
 	}
 
 	private void TryEnterTown()
@@ -200,6 +284,7 @@ public partial class SimulationRoot : Node2D
 
 		player.Gold = Mathf.Max(0, player.Gold - RecruitCostGold);
 		player.PartySize = Mathf.Clamp(player.PartySize + RecruitTroopsAmount, player.PartySizeMin, player.PartySizeMax);
+		player.QueueRedraw(); // debug label must update immediately
 		GD.Print($"[Town] Recruited +{RecruitTroopsAmount} for {RecruitCostGold} gold.");
 		UpdateTownModalText();
 		_townModal?.ShowTown(_activeTown.TownName, _cachedTownBody ?? "");
@@ -225,6 +310,7 @@ public partial class SimulationRoot : Node2D
 			dir = dir.Normalized();
 			player.GlobalPosition = bounds.ClampPointToInnerRect(player.GlobalPosition + dir * (player.RadiusPx + _activeTown.HalfSizePx + 10f));
 		}
+		player?.QueueRedraw();
 
 		_townModal?.HideTown();
 		_timeScaleIndex = 1;
@@ -256,6 +342,8 @@ public partial class SimulationRoot : Node2D
 		foreach (var child in GetChildren())
 		{
 			if (child is not RandomAI ai)
+				continue;
+			if (ai.IsQueuedForDeletion())
 				continue;
 
 			var dist = player.GlobalPosition.DistanceTo(ai.GlobalPosition);
@@ -333,6 +421,8 @@ public partial class SimulationRoot : Node2D
 			player.Gold = Mathf.Max(0, player.Gold + 3);
 			ai.Morale = Mathf.Clamp(ai.Morale - 2, 0, 100);
 			ai.Gold = Mathf.Max(0, ai.Gold - 2);
+			player.QueueRedraw();
+			ai.QueueRedraw();
 			GD.Print($"[Encounter] Player wins. AI now {ai.PartySize}.");
 		}
 		else
@@ -343,6 +433,8 @@ public partial class SimulationRoot : Node2D
 			player.Gold = Mathf.Max(0, player.Gold - 2);
 			ai.Morale = Mathf.Clamp(ai.Morale + 2, 0, 100);
 			ai.Gold = Mathf.Max(0, ai.Gold + 3);
+			player.QueueRedraw();
+			ai.QueueRedraw();
 			GD.Print($"[Encounter] Player loses. Player now {player.PartySize}.");
 		}
 
@@ -388,6 +480,9 @@ public partial class SimulationRoot : Node2D
 		var separation = (player.RadiusPx + ai.RadiusPx) + 12f;
 		ai.GlobalPosition = bounds.ClampPointToInnerRect(ai.GlobalPosition + dir * separation);
 		player.GlobalPosition = bounds.ClampPointToInnerRect(player.GlobalPosition - dir * separation);
+		// Positions changed too; redraw immediately so debug labels don't look stale.
+		player.QueueRedraw();
+		ai.QueueRedraw();
 	}
 
 	private void SpawnAiParties()

@@ -20,6 +20,8 @@ public partial class RandomAI : PartyBase
 	private int _retargetTicksLeft;
 	private static readonly RandomNumberGenerator Rng = new();
 	private PlayerParty? _playerInRange;
+	private RandomAI? _weakerAiInRange;
+	private int _restTicksLeft;
 
 	protected override void AfterBaseReady()
 	{
@@ -63,11 +65,46 @@ public partial class RandomAI : PartyBase
 		if (Bounds == null)
 			return;
 
+		if (_playerInRange != null && _playerInRange.IsQueuedForDeletion())
+			_playerInRange = null;
+		if (_weakerAiInRange != null && _weakerAiInRange.IsQueuedForDeletion())
+			_weakerAiInRange = null;
+
+		// After AI-vs-AI battles, winners rest for a few seconds to avoid immediate re-engagement.
+		if (_restTicksLeft > 0)
+		{
+			_restTicksLeft--;
+			ClearTarget();
+			_state = AiState.WanderIdle;
+			return;
+		}
+
+		// Phase 3 extension: re-evaluate weaker AI targets as strengths change.
+		if (_weakerAiInRange != null)
+		{
+			// If the target is no longer weaker (or drifted out of range), clear it.
+			var dist = GlobalPosition.DistanceTo(_weakerAiInRange.GlobalPosition);
+			var inRange = dist <= (DetectionRadiusPx + _weakerAiInRange.RadiusPx);
+			if (!inRange || _weakerAiInRange.StrengthValue >= StrengthValue)
+			{
+				_weakerAiInRange = null;
+			}
+		}
+		else
+		{
+			AcquireWeakerAiTarget();
+		}
+
 		// Phase 2 Step 2.3 behavior switch: default Wander, but Chase/Flee if player detected.
 		if (_playerInRange != null)
 		{
 			var playerStrength = Mathf.Max(0, _playerInRange.PartySize);
 			_state = StrengthValue >= playerStrength ? AiState.Chase : AiState.Flee;
+		}
+		else if (_weakerAiInRange != null)
+		{
+			// Phase 3 extension: chase and attack weaker AI parties.
+			_state = AiState.Chase;
 		}
 		else if (_state is AiState.Chase or AiState.Flee)
 		{
@@ -99,6 +136,16 @@ public partial class RandomAI : PartyBase
 		}
 	}
 
+	// Called by SimulationRoot after AI-vs-AI battles.
+	public void StartRestTicks(int ticks)
+	{
+		_restTicksLeft = Mathf.Max(_restTicksLeft, Mathf.Max(0, ticks));
+		ClearTarget();
+		_state = AiState.WanderIdle;
+		// Debug visuals are label-based; redraw so changes are immediate.
+		QueueRedraw();
+	}
+
 	private void TickWanderMovement(double tickDeltaSeconds)
 	{
 		if (--_retargetTicksLeft <= 0)
@@ -117,10 +164,17 @@ public partial class RandomAI : PartyBase
 
 	private void TickChase(double tickDeltaSeconds)
 	{
-		if (_playerInRange == null)
+		if (_playerInRange != null)
+		{
+			SetTarget(_playerInRange.GlobalPosition);
+			TickMoveTowardTarget(tickDeltaSeconds, stopWhenClose: false);
+			return;
+		}
+
+		if (_weakerAiInRange == null)
 			return;
 
-		SetTarget(_playerInRange.GlobalPosition);
+		SetTarget(_weakerAiInRange.GlobalPosition);
 		TickMoveTowardTarget(tickDeltaSeconds, stopWhenClose: false);
 	}
 
@@ -155,7 +209,18 @@ public partial class RandomAI : PartyBase
 			return;
 		}
 
-		GD.Print($"[Detect] {Name} saw {other.Name}");
+		if (other is RandomAI otherAi)
+		{
+			// Chase other AI only if they're weaker by strength proxy.
+			var otherStrength = otherAi.StrengthValue;
+			if (otherStrength < StrengthValue)
+			{
+				if (_weakerAiInRange == null || otherStrength > _weakerAiInRange.StrengthValue)
+					_weakerAiInRange = otherAi;
+			}
+
+			return;
+		}
 	}
 
 	protected override void OnPartyLost(PartyBase other)
@@ -167,6 +232,48 @@ public partial class RandomAI : PartyBase
 			return;
 		}
 
-		GD.Print($"[Detect] {Name} lost {other.Name}");
+		if (other == _weakerAiInRange)
+		{
+			_weakerAiInRange = null;
+			GD.Print($"[Detect] {Name} lost weaker AI");
+			return;
+		}
+	}
+
+	private void AcquireWeakerAiTarget()
+	{
+		// If AIs change strength due to battles, we must adapt even when no new
+		// AreaEntered event fires. So we re-acquire a weaker target by distance each tick.
+		var parent = GetParent();
+		if (parent == null)
+			return;
+
+		var best = (RandomAI?)null;
+		var bestDist = float.PositiveInfinity;
+
+		foreach (var child in parent.GetChildren())
+		{
+			if (child is not RandomAI other)
+				continue;
+			if (other == this)
+				continue;
+			if (other.IsQueuedForDeletion())
+				continue;
+
+			var dist = GlobalPosition.DistanceTo(other.GlobalPosition);
+			var inRange = dist <= (DetectionRadiusPx + other.RadiusPx);
+			if (!inRange)
+				continue;
+			if (other.StrengthValue >= StrengthValue)
+				continue; // only chase weaker
+
+			if (dist < bestDist)
+			{
+				best = other;
+				bestDist = dist;
+			}
+		}
+
+		_weakerAiInRange = best;
 	}
 }

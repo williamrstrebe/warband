@@ -6,8 +6,6 @@ public partial class PlayerParty : PartyBase
 
 	protected override void AfterBaseReady()
 	{
-		
-		this.Gold = 10;
 		// Player defaults (can still be overridden in the editor).
 		if (Color == new Color(1, 1, 1, 1))
 			Color = new Color(1.0f, 0.85f, 0.2f, 1.0f);

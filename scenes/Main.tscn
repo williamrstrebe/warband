@@ -128,7 +128,7 @@ DebugHintLabelPath = NodePath("../DebugCanvas/DebugTop/HintLabel")
 WorldBoundsPath = NodePath("../WorldBounds")
 EncounterModalPath = NodePath("../EncounterCanvas/EncounterModal")
 TownModalPath = NodePath("../TownCanvas/TownModal")
-AiCount = 3
+AiCount = 10
 
 [node name="Player" type="Area2D" parent="SimulationRoot" unique_id=191847144]
 script = ExtResource("4_kc1w5")
