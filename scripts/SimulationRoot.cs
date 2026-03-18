@@ -15,13 +15,37 @@ public partial class SimulationRoot : Node2D
 
 	[Export] public NodePath DebugLabelPath { get; set; } = new("");
 	[Export] public NodePath DebugHintLabelPath { get; set; } = new("");
+	[Export] public NodePath WorldBoundsPath { get; set; } = new("");
+	[Export] public NodePath EncounterModalPath { get; set; } = new("");
+
+	// Phase 2 Step 2.1: spawn N roaming AI parties.
+	[Export(PropertyHint.Range, "0,500,1")]
+	public int AiCount { get; set; } = 0;
+
+	// From an AI party node (child of SimulationRoot), the WorldBounds node in Main.tscn is at ../../WorldBounds.
+	// If the scene structure changes, update this in the editor.
+	[Export] public NodePath WorldBoundsPathFromParty { get; set; } = new("../../WorldBounds");
+
+	private static readonly RandomNumberGenerator Rng = new();
+
+	private EncounterModal? _encounterModal;
+	private RandomAI? _encounterAi;
+	private int _encounterCooldownTicksLeft;
 
 	public override void _Ready()
 	{
 		_clock = new FixedTickClock(TicksPerSecond);
 		_debugLabel = GetNodeOrNull<Label>(DebugLabelPath);
 		_debugHintLabel = GetNodeOrNull<Label>(DebugHintLabelPath);
+		_encounterModal = GetNodeOrNull<EncounterModal>(EncounterModalPath);
+		if (_encounterModal != null)
+		{
+			_encounterModal.FightPressed += () => ResolveEncounter(EncounterChoice.Fight);
+			_encounterModal.AutoResolvePressed += () => ResolveEncounter(EncounterChoice.AutoResolve);
+			_encounterModal.FleePressed += () => ResolveEncounter(EncounterChoice.Flee);
+		}
 		_cachedControlsText = BuildControlsText();
+		SpawnAiParties();
 		QueueRedraw();
 	}
 
@@ -80,6 +104,192 @@ public partial class SimulationRoot : Node2D
 			if (child is IFixedTick tickable)
 				tickable.FixedTick(tickDeltaSeconds);
 		}
+
+		if (_encounterCooldownTicksLeft > 0)
+			_encounterCooldownTicksLeft--;
+
+		TryStartEncounter();
+	}
+
+	private enum EncounterChoice
+	{
+		Fight,
+		AutoResolve,
+		Flee
+	}
+
+	private void TryStartEncounter()
+	{
+		// Phase 3 Step 3.1: if colliders overlap → pause world → show modal.
+		if (_encounterAi != null)
+			return;
+		if (_encounterCooldownTicksLeft > 0)
+			return;
+		if (_timeScaleIndex == 0)
+			return;
+
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null)
+			return;
+
+		foreach (var child in GetChildren())
+		{
+			if (child is not RandomAI ai)
+				continue;
+
+			var dist = player.GlobalPosition.DistanceTo(ai.GlobalPosition);
+			var threshold = player.RadiusPx + ai.RadiusPx;
+			if (dist <= threshold)
+			{
+				StartEncounter(player, ai);
+				return;
+			}
+		}
+	}
+
+	private void StartEncounter(PlayerParty player, RandomAI ai)
+	{
+		_encounterAi = ai;
+		_timeScaleIndex = 0;
+
+		var body = $"You ran into {ai.Name}.\n\nYour party: {player.PartySize}\nEnemy party: {ai.PartySize}";
+		_encounterModal?.ShowEncounter("Encounter", body);
+	}
+
+	private void ResolveEncounter(EncounterChoice choice)
+	{
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null || _encounterAi == null)
+		{
+			_encounterModal?.HideEncounter();
+			_timeScaleIndex = 1;
+			_encounterAi = null;
+			return;
+		}
+
+		var ai = _encounterAi;
+
+		switch (choice)
+		{
+			case EncounterChoice.Fight:
+			case EncounterChoice.AutoResolve:
+				AutoResolve(player, ai);
+				break;
+
+			case EncounterChoice.Flee:
+				if (TryFlee(player, ai))
+				{
+					GD.Print("[Encounter] Player fled successfully.");
+					PushApart(player, ai);
+				}
+				else
+				{
+					GD.Print("[Encounter] Flee failed; auto-resolving.");
+					AutoResolve(player, ai);
+				}
+				break;
+		}
+
+		_encounterModal?.HideEncounter();
+		_timeScaleIndex = 1;
+		_encounterAi = null;
+		_encounterCooldownTicksLeft = Mathf.Max(1, TicksPerSecond / 2);
+	}
+
+	private void AutoResolve(PlayerParty player, RandomAI ai)
+	{
+		// Phase 3 Step 3.2: Auto-resolve v1 (placeholder values allowed).
+		// For now: use PartySize as "power" with a ±20% random modifier; loser loses 1 troop.
+		var pPower = ApplyModifier(player.PartySize);
+		var aPower = ApplyModifier(ai.PartySize);
+
+		var playerWins = pPower >= aPower;
+		if (playerWins)
+		{
+			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize - 1);
+			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize); // winner keeps size (v1)
+			GD.Print($"[Encounter] Player wins. AI now {ai.PartySize}.");
+		}
+		else
+		{
+			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize - 1);
+			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize);
+			GD.Print($"[Encounter] Player loses. Player now {player.PartySize}.");
+		}
+
+		if (ai.PartySize <= 0)
+		{
+			ai.QueueFree();
+			GD.Print("[Encounter] AI defeated and removed.");
+		}
+		else
+		{
+			PushApart(player, ai);
+		}
+	}
+
+	private static float ApplyModifier(int partySize)
+	{
+		var basePower = Mathf.Max(0, partySize);
+		var mod = Rng.RandfRange(0.8f, 1.2f);
+		return basePower * mod;
+	}
+
+	private static bool TryFlee(PlayerParty player, RandomAI ai)
+	{
+		// Very simple v1:
+		// - If player is faster, guaranteed escape.
+		// - Otherwise 50/50.
+		if (player.CurrentSpeedPxPerSec > ai.CurrentSpeedPxPerSec)
+			return true;
+		return Rng.Randf() < 0.5f;
+	}
+
+	private void PushApart(PlayerParty player, RandomAI ai)
+	{
+		var bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
+		if (bounds == null)
+			return;
+
+		var dir = (ai.GlobalPosition - player.GlobalPosition);
+		if (dir.LengthSquared() < 0.001f)
+			dir = Vector2.Right;
+		dir = dir.Normalized();
+
+		var separation = (player.RadiusPx + ai.RadiusPx) + 12f;
+		ai.GlobalPosition = bounds.ClampPointToInnerRect(ai.GlobalPosition + dir * separation);
+		player.GlobalPosition = bounds.ClampPointToInnerRect(player.GlobalPosition - dir * separation);
+	}
+
+	private void SpawnAiParties()
+	{
+		if (AiCount <= 0)
+			return;
+
+		var bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
+		if (bounds == null)
+			return;
+
+		for (var i = 0; i < AiCount; i++)
+		{
+			var ai = new RandomAI
+			{
+				Name = $"AI_{i + 1}",
+				WorldBoundsPath = WorldBoundsPathFromParty,
+			};
+
+			var p = GetRandomPoint(bounds.InnerRect);
+			ai.GlobalPosition = p;
+			AddChild(ai);
+		}
+	}
+
+	private static Vector2 GetRandomPoint(Rect2 rect)
+	{
+		return new Vector2(
+			Rng.RandfRange(rect.Position.X, rect.End.X),
+			Rng.RandfRange(rect.Position.Y, rect.End.Y)
+		);
 	}
 
 	public override void _Draw()

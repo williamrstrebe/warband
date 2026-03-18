@@ -4,7 +4,9 @@
 [ext_resource type="Script" uid="uid://dknsjccj5ek2p" path="res://scripts/WorldBounds2D.cs" id="2_jn6a6"]
 [ext_resource type="Script" uid="uid://r7tw4dx75m0l" path="res://scripts/WorldCameraFit2D.cs" id="3_yw2m1"]
 [ext_resource type="Script" uid="uid://cka6075o7o5fk" path="res://scripts/PlayerParty.cs" id="4_kc1w5"]
-[ext_resource type="Script" uid="uid://celpy1g1og77c" path="res://scripts/RandomAI.cs" id="5_vcsgt"]
+[ext_resource type="Script" uid="uid://cyw67qjd7w2te" path="res://scripts/EncounterModal.cs" id="6_2k7k1"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_vcsgt"]
 
 [node name="Main" type="Node2D" unique_id=1514129842]
 
@@ -45,16 +47,91 @@ grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 1, 1, 0.85)
 horizontal_alignment = 1
 
+[node name="EncounterCanvas" type="CanvasLayer" parent="." unique_id=1122334455]
+layer = 50
+
+[node name="EncounterModal" type="Control" parent="EncounterCanvas" unique_id=-2061521730]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("6_2k7k1")
+TitleLabelPath = NodePath("Center/Panel/VBox/Title")
+BodyLabelPath = NodePath("Center/Panel/VBox/Body")
+FightButtonPath = NodePath("Center/Panel/VBox/Buttons/Fight")
+AutoResolveButtonPath = NodePath("Center/Panel/VBox/Buttons/AutoResolve")
+FleeButtonPath = NodePath("Center/Panel/VBox/Buttons/Flee")
+
+[node name="Backdrop" type="ColorRect" parent="EncounterCanvas/EncounterModal" unique_id=915889201]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="EncounterCanvas/EncounterModal" unique_id=-950410619]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="EncounterCanvas/EncounterModal/Center" unique_id=160700492]
+custom_minimum_size = Vector2(520, 220)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="EncounterCanvas/EncounterModal/Center/Panel" unique_id=1271811603]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox" unique_id=-1912044692]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Encounter"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox" unique_id=-800944581]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.9)
+text = "..."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox" unique_id=309066530]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Fight" type="Button" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox/Buttons" unique_id=1310177641]
+layout_mode = 2
+text = "Fight"
+
+[node name="AutoResolve" type="Button" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox/Buttons" unique_id=1001122334]
+layout_mode = 2
+text = "Auto-resolve"
+
+[node name="Flee" type="Button" parent="EncounterCanvas/EncounterModal/Center/Panel/VBox/Buttons" unique_id=1102233445]
+layout_mode = 2
+text = "Flee"
+
 [node name="SimulationRoot" type="Node2D" parent="." unique_id=1574079505]
 script = ExtResource("1_3b8p0")
 DebugLabelPath = NodePath("../DebugCanvas/DebugTop/TickLabel")
 DebugHintLabelPath = NodePath("../DebugCanvas/DebugTop/HintLabel")
+WorldBoundsPath = NodePath("../WorldBounds")
+EncounterModalPath = NodePath("../EncounterCanvas/EncounterModal")
+AiCount = 3
 
 [node name="Player" type="Area2D" parent="SimulationRoot" unique_id=191847144]
 script = ExtResource("4_kc1w5")
 WorldBoundsPath = NodePath("../../WorldBounds")
 
-[node name="AI" type="Area2D" parent="SimulationRoot" unique_id=305791616]
-script = ExtResource("5_vcsgt")
-Color = Color(0.972549, 0.17254902, 0.24705882, 1)
-WorldBoundsPath = NodePath("../../WorldBounds")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SimulationRoot/Player" unique_id=690790810]
+shape = SubResource("CircleShape2D_vcsgt")
+debug_color = Color(0.39607844, 0.5254902, 0.81960785, 0.972549)

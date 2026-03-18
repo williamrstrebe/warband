@@ -134,3 +134,66 @@ dotnet test
 - Debug binding display:
   - For keys, debug uses `InputEventKey.AsText()` so special keys like arrows render correctly (and modifiers are accurate).
 - Determinism: speed affects movement only inside `FixedTick(...)`, preserving Phase 0 tick-driven behavior.
+
+### Step 1.2 verification status (2026-03-17)
+- The runtime behavior matches README expectations:
+  - Increasing `PartySize` via `party_size_increase` / `party_size_decrease` visibly reduces/increases `CurrentSpeedPxPerSec` in the debug overlay.
+  - Movement distance per tick is derived from `CurrentSpeedPxPerSec` inside `PlayerParty.FixedTick(...)`, so arrival time scales with party size.
+- Core unit tests (`Warband.Core.Tests`) currently cover the fixed-tick clock and time scaling; there are **no dedicated C# unit tests** for the speed model itself, but the model is a pure property and easily testable if needed.
+- All tests pass (`dotnet test` from repo root), so Phase 1 Step 1.2 is treated as **implemented and stable** for Phase 2 work.
+
+## Phase 2 — Step 2.1 notes (Random Walk AI)
+- `RandomAI` is a Godot-side `Area2D, IFixedTick` that reuses the same speed model fields as `PlayerParty` (including `BaseSpeedPxPerSec`, `PartySize`, `PartySizePenaltyK`, and `CurrentSpeedPxPerSec`).
+- Behavior model:
+  - AI alternates between an **Idle** state and a **Moving** state.
+  - While idle, it waits for a random duration (0.5–1.5 seconds, expressed as ticks assuming the 10 ticks/sec default) before choosing a new destination.
+  - When moving, it:
+	- Picks a random point inside `WorldBounds2D.InnerRect` as the current target.
+	- Moves toward that point using `CurrentSpeedPxPerSec` inside `FixedTick(...)`.
+	- Periodically re-targets to a new random point after a random interval (1–3 seconds in ticks) to encourage broad map coverage.
+	- Transitions back to Idle once it comes within `StopThresholdPx` of its current target.
+- Bounds rule: positions are always clamped via `WorldBounds2D.ClampPointToInnerRect(...)`, so AI circles cannot leave the map and have no boundary jitter.
+- Tests:
+  - No dedicated unit tests yet (logic is Godot-side), but the class is pure apart from `WorldBounds2D` and uses deterministic tick-driven updates, so it is a good candidate for future harness-style tests if needed.
+
+## Phase 2 — Step 2.2 notes (Detection Radius System)
+- Implemented a per-party **detection radius** using a child `Area2D` named `Detection` with a `CircleShape2D` sized by `DetectionRadiusPx`.
+- Both `PlayerParty` and `RandomAI` now ensure, at runtime, that:
+  - A **body collider** exists (`CollisionShape2D` named `BodyShape`, circle radius = `RadiusPx`) so they can be detected.
+  - The body is placed on **collision layer 1** and does not actively detect (`CollisionMask = 0`).
+  - The detection area uses `CollisionMask = 1` to detect parties on layer 1.
+- Debug:
+  - Optional radius visualization via `DrawDetectionRadius` (drawn as a faint circle).
+  - Logs to output on enter/exit via `[Detect] ...` messages.
+- Note: the colliders are created in code so **spawned** AI parties automatically work (no per-instance scene wiring required).
+
+## Phase 2 — Step 2.3 notes (Simple Behavior Switch)
+- `RandomAI` now supports 3 behaviors:
+  - **Wander** (Idle/Move random walk as in Step 2.1)
+  - **Chase** the player when the player is inside the detection radius *and* AI `StrengthValue >= player.PartySize`
+  - **Flee** when the player is inside the radius but AI is weaker (`StrengthValue < player.PartySize`)
+- `StrengthValue` defaults to `PartySize` if not explicitly set; this is a temporary proxy until a richer strength model lands.
+- Determinism: state changes and movement decisions happen only inside `FixedTick(...)`.
+
+## Phase 3 — Step 3.1 notes (Collision Encounter)
+- Implemented an encounter trigger in `SimulationRoot` that, after each simulation tick, checks for **overlap** between the player and any `RandomAI` party using circle radius distance:
+  - overlap when `distance(player, ai) <= player.RadiusPx + ai.RadiusPx`
+- When an overlap is detected:
+  - Simulation is paused by setting the time scale index to `0`.
+  - A modal UI (`EncounterModal`) is shown with three options: **Fight**, **Auto-resolve**, **Flee**.
+- Loop safety:
+  - While an encounter is active, no new encounter can start.
+  - After resolving, a short tick-based cooldown prevents immediate re-trigger.
+  - Parties are pushed apart and clamped to `WorldBounds2D.InnerRect` to avoid repeated triggers.
+
+## Phase 3 — Step 3.2 notes (Auto-Resolve Combat v1)
+- Implemented a first-pass auto-resolve in `SimulationRoot` using **arbitrary placeholder values** (per Phase 3 scope):
+  - Power proxy: `PartySize` multiplied by a random modifier in \([0.8, 1.2]\).
+  - Winner: higher power.
+  - Loser troop loss: `-1` troop (clamped to min).
+  - AI parties are removed (`QueueFree`) when their `PartySize` reaches `0`.
+- Flee v1:
+  - Guaranteed escape if player speed is higher than AI speed; otherwise a 50% chance.
+
+## Debug readability
+- `PlayerParty` and `RandomAI` now draw the current `PartySize` above each party circle for quick on-map readability.
