@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Warband.Core.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+132dcb5f954d8e98fb605c40c733fd5653f32856")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6bfeffb095c2a5b1250f81626163bb59b4f92ce5")]
 [assembly: System.Reflection.AssemblyProductAttribute("Warband.Core.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Warband.Core.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

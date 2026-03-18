@@ -39,8 +39,9 @@ Per `README.md`, Phase 0 is now split into:
   - `VisualPaddingPx` (keeps the visible map away from viewport edges)
   - `ClampInsetPx` (keeps entities away from the border to avoid jitter/collider overlap)
 - **Framing / keeping the map visible**:
-  - Add a `Camera2D` (or configure an existing one) to center on `OuterRect`’s center.
-  - Auto-adjust `Camera2D.Zoom` (or shrink the map) so the full `OuterRect` fits within the viewport **minus `VisualPaddingPx`**.
+  - Add a `Camera2D` (or configure an existing one).
+  - Early prototype behavior: when the world fits, center on `OuterRect`’s center and (optionally) adjust zoom so the full `OuterRect` fits within the viewport minus `VisualPaddingPx`.
+  - After Phase 5 scales the world beyond the viewport, switch to “camera follows player” behavior (clamped to world bounds) instead of trying to keep the entire `OuterRect` visible.
 - **Clamping rules**:
   - Clamp entity *center* position into `InnerRect = OuterRect.Grow(-ClampInsetPx)`.
   - If entities have radius later, clamp using `(ClampInsetPx + entityRadius)` to ensure their collider stays inside.
@@ -241,6 +242,38 @@ dotnet test
   - A **Recruit** button attempts to buy `+5` troops for a gold cost (defaults: `RecruitTroopsAmount = 5`, `RecruitCostGold = 3`).
   - A **Leave** button closes the modal, resumes simulation, and nudges the player away to prevent immediate re-trigger.
 
+## Phase 4 — Step 4.2 notes (Wage Tick System)
+- Added a global day/hour counter to the top debug HUD, derived from the fixed-tick clock.
+- Implemented wage payment cadence:
+  - Wage runs every **7 in-game days** (`WageIntervalDays = 7`).
+  - Prototype mapping: `SimSecondsPerInGameHour` (default `1f`) defines how sim-time seconds map to in-game hours.
+  - Wage cost applied as: `player.Gold -= player.PartySize * WageGoldPerTroopPerDay * WageIntervalDays`.
+- On-screen indicator:
+  - Debug HUD now shows `Wage in: {days}d {hours}h` alongside `Day` and `Hr`.
+- Prototype bankruptcy/desertion stub:
+  - If gold is reduced to 0 during a wage tick, player loses 1 troop and morale -1.
+
+## Phase 4 — Step 4.3 notes (Morale System v1)
+- Starvation:
+  - Implemented “once per game day” morale reduction.
+  - Every in-game day (`24h`, using the same `SimSecondsPerInGameHour` mapping) `MoraleStarvationPerDay` (default `1`) is applied to all `PartyBase` instances (player + AI).
+- Outnumbered penalty:
+  - Applied immediately before battle resolution when a party has fewer troops than its opponent.
+  - Reduces morale by `MoraleOutnumberedPenalty` (default `2`).
+- Recent victory / defeat:
+  - After battle outcome is determined:
+	- winner morale increases by `MoraleVictoryBonus` (default `+2`)
+	- loser morale decreases by `MoraleDefeatPenalty` (default `2`)
+  - This is applied to both:
+	- player vs AI (`AutoResolve(...)`)
+	- AI vs AI (`ResolveAiBattle(...)`)
+- Morale-aware combat power:
+  - Combat power now uses a `moraleFactor` so morale affects who wins:
+	- `power = PartySize * random(0.8..1.2) * moraleFactor`
+	- `moraleFactor = MoraleCombatPowerFactorBase + (morale/100)*MoraleCombatPowerFactorScale`
+- Flee behavior:
+  - The `Flee` choice (player modal option) now uses flee odds influenced by morale difference (not just speed).
+
 ## Debug readability
 - `PlayerParty` and `RandomAI` now draw the current `PartySize` above each party circle for quick on-map readability.
 
@@ -264,4 +297,12 @@ dotnet test
 
 ## Viewport defaults (1920 x 1080)
 - Updated `project.godot` to default the game window viewport size to `1920x1080`.
-- Updated `WorldCameraFit2D` so the camera zoom uses the full fit scale (it can zoom IN on larger viewports and zoom OUT on smaller ones). This ensures `WorldBounds2D` framing scales correctly with the selected viewport size while keeping the full `OuterRect` visible with the configured `VisualPaddingPx`.
+- Updated `WorldCameraFit2D` to follow the player rather than keeping the entire `WorldBounds2D.OuterRect` visible.
+  - The camera is clamped so the viewport stays inside the world bounds (using `VisualPaddingPx` and the current camera zoom), and it follows continuously (every frame).
+  - This matches Phase 5’s need for a larger world where the map can be bigger than the viewport.
+
+## Camera zoom scaling tweak
+- Updated `WorldCameraFit2D.DefaultZoom` so the visible world scale is 1/4 of the previous default.
+
+## Map scale-up prerequisite (Phase 5)
+- Updated `WorldBounds2D.Size` default from `1200x800` to `3600x2400` (3x width and height), so there is enough space for map density work.

@@ -3,7 +3,8 @@ using Godot;
 public partial class WorldBounds2D : Node2D
 {
 	[Export] public Vector2 Center { get; set; } = Vector2.Zero;
-	[Export] public Vector2 Size { get; set; } = new(1200, 800);
+	// Phase 5 prerequisite: increase map scale by 3x.
+	[Export] public Vector2 Size { get; set; } = new(3600, 2400);
 
 	// Gameplay inset used for clamping entity centers.
 	[Export(PropertyHint.Range, "0,512,1")]

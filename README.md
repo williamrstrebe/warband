@@ -238,8 +238,9 @@ Entering town:
 
 ## Step 4.2 — Wage Tick System
 
-Every X hours:
+Every X days:
 gold -= troopCount * wage
+this requires a day and hour count that should also be added. for default let's say one hour is one minute, so one day is 24 minutes in real life.
 
 
 ### Test

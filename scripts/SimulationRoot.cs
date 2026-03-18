@@ -3,12 +3,11 @@ using Warband.Core;
 
 public partial class SimulationRoot : Node2D
 {
-	// README Phase 0 Step 0.1 example: 10 ticks/sec.
 	[Export] public int TicksPerSecond { get; set; } = 10;
 	[Export] public int MaxTicksPerFrame { get; set; } = 120;
 
 	private FixedTickClock? _clock;
-	private int _timeScaleIndex = 1; // 1x
+	private int _timeScaleIndex = 1;
 	private Label? _debugLabel;
 	private Label? _debugHintLabel;
 	private string? _cachedControlsText;
@@ -33,6 +32,40 @@ public partial class SimulationRoot : Node2D
 	[Export(PropertyHint.Range, "1,100,1")]
 	public int RecruitTroopsAmount { get; set; } = 5;
 
+	// Phase 4 Step 4.2: wage tick system (prototype values).
+	// Timeline mapping (temporary):
+	// - 1 sim second = `SimSecondsPerInGameHour` in-game hours.
+	// - Wages are applied every `WageIntervalDays` days.
+	[Export(PropertyHint.Range, "0.01,24,0.01")]
+	public float SimSecondsPerInGameHour { get; set; } = 1f;
+
+	[Export(PropertyHint.Range, "1,365,1")]
+	public int WageIntervalDays { get; set; } = 7;
+
+	[Export(PropertyHint.Range, "0,1000,1")]
+	public int WageGoldPerTroopPerDay { get; set; } = 1;
+
+	// Phase 4 Step 4.3: morale algorithm (v1).
+	[Export(PropertyHint.Range, "0,10,1")]
+	public int MoraleVictoryBonus { get; set; } = 2;
+
+	[Export(PropertyHint.Range, "0,10,1")]
+	public int MoraleDefeatPenalty { get; set; } = 2;
+
+	[Export(PropertyHint.Range, "0,10,1")]
+	public int MoraleOutnumberedPenalty { get; set; } = 2;
+
+	[Export(PropertyHint.Range, "0,10,1")]
+	public int MoraleStarvationPerDay { get; set; } = 1;
+
+	// Morale influences battle power via:
+	// moraleFactor = MoraleCombatPowerFactorBase + (morale/100)*MoraleCombatPowerFactorScale
+	[Export(PropertyHint.Range, "0,2,0.01")]
+	public float MoraleCombatPowerFactorBase { get; set; } = 0.5f;
+
+	[Export(PropertyHint.Range, "0,3,0.01")]
+	public float MoraleCombatPowerFactorScale { get; set; } = 1f;
+
 	// From an AI party node (child of SimulationRoot), the WorldBounds node in Main.tscn is at ../../WorldBounds.
 	// If the scene structure changes, update this in the editor.
 	[Export] public NodePath WorldBoundsPathFromParty { get; set; } = new("../../WorldBounds");
@@ -46,6 +79,14 @@ public partial class SimulationRoot : Node2D
 	private TownModal? _townModal;
 	private Town? _activeTown;
 	private int _townCooldownTicksLeft;
+
+	// Wage tick scheduling.
+	private double _wageIntervalSeconds;
+	private double _wageSecondsLeft;
+
+	// Starvation tick scheduling.
+	private double _starvationIntervalSeconds;
+	private double _starvationSecondsLeft;
 
 	public override void _Ready()
 	{
@@ -66,6 +107,13 @@ public partial class SimulationRoot : Node2D
 			_townModal.LeavePressed += LeaveTown;
 		}
 		_cachedControlsText = BuildControlsText();
+
+		_wageIntervalSeconds = WageIntervalDays * 24.0 * SimSecondsPerInGameHour;
+		_wageSecondsLeft = _wageIntervalSeconds;
+
+		_starvationIntervalSeconds = 24.0 * SimSecondsPerInGameHour;
+		_starvationSecondsLeft = _starvationIntervalSeconds;
+
 		SpawnTowns();
 		SpawnAiParties();
 		QueueRedraw();
@@ -95,9 +143,17 @@ public partial class SimulationRoot : Node2D
 
 		if (_clock != null)
 		{
+			var inGameHoursTotal = _clock.SimTimeSeconds / SimSecondsPerInGameHour;
+			var day = (int)(inGameHoursTotal / 24.0);
+			var hour = (int)(inGameHoursTotal % 24.0);
+
+			var wageLeftHoursTotal = Math.Max(0.0, _wageSecondsLeft / SimSecondsPerInGameHour);
+			var wageLeftDays = (int)(wageLeftHoursTotal / 24.0);
+			var wageLeftHour = (int)(wageLeftHoursTotal % 24.0);
+
 			var partyText = player == null
 				? ""
-				: $"  |  Party: {player.PartySize}  |  Morale: {player.Morale}  |  Gold: {player.Gold}  |  Speed: {player.CurrentSpeedPxPerSec:0.##} px/s";
+				: $"  |  Day: {day}  Hr: {hour}  |  Party: {player.PartySize}  |  Morale: {player.Morale}  |  Gold: {player.Gold}  |  Wage in: {wageLeftDays}d {wageLeftHour}h  |  Speed: {player.CurrentSpeedPxPerSec:0.##} px/s";
 			_debugLabel?.SetText($"Ticks: {_clock.TotalTicks}  |  SimTime: {_clock.SimTimeSeconds:0.000}s  |  Scale: {TimeScale.FromIndex(_timeScaleIndex)}x{partyText}");
 			_debugHintLabel?.SetText(_cachedControlsText ?? BuildControlsText());
 		}
@@ -136,7 +192,78 @@ public partial class SimulationRoot : Node2D
 
 		TryEnterTown();
 		TryResolveAiBattles();
+		UpdateWagesCountdown(tickDeltaSeconds);
+		UpdateStarvationCountdown(tickDeltaSeconds);
 		TryStartEncounter();
+	}
+
+	private void UpdateStarvationCountdown(double tickDeltaSeconds)
+	{
+		if (MoraleStarvationPerDay <= 0)
+			return;
+		if (SimSecondsPerInGameHour <= 0 || _starvationIntervalSeconds <= 0)
+			return;
+
+		_starvationSecondsLeft -= tickDeltaSeconds;
+
+		while (_starvationSecondsLeft <= 0)
+		{
+			ApplyStarvationTick();
+			_starvationSecondsLeft += _starvationIntervalSeconds;
+		}
+	}
+
+	private void ApplyStarvationTick()
+	{
+		// Phase 4 Step 4.3: starvation reduces morale once per game day.
+		foreach (var child in GetChildren())
+		{
+			if (child is PartyBase party && party is not null && !party.IsQueuedForDeletion())
+			{
+				party.Morale = Mathf.Clamp(party.Morale - MoraleStarvationPerDay, 0, 100);
+				// AI morale isn't shown, but it affects future combat resolution.
+			}
+		}
+	}
+
+	private void UpdateWagesCountdown(double tickDeltaSeconds)
+	{
+		// Wage interval schedule is kept in sim-time ticks so it remains deterministic.
+		if (WageIntervalDays <= 0 || WageGoldPerTroopPerDay <= 0 || SimSecondsPerInGameHour <= 0)
+			return;
+
+		_wageSecondsLeft -= tickDeltaSeconds;
+
+		while (_wageSecondsLeft <= 0)
+		{
+			ApplyWageTick();
+			_wageSecondsLeft += _wageIntervalSeconds;
+		}
+	}
+
+	private void ApplyWageTick()
+	{
+		// Phase 4 Step 4.2: gold -= troopCount * wage.
+		// Here: wage is `WageGoldPerTroopPerDay` applied over `WageIntervalDays`.
+		var player = GetNodeOrNull<PlayerParty>("Player");
+		if (player == null)
+			return;
+
+		var troopCount = player.PartySize;
+		var wageCost = troopCount * WageGoldPerTroopPerDay * WageIntervalDays;
+		if (wageCost <= 0)
+			return;
+
+		player.Gold = Mathf.Max(0, player.Gold - wageCost);
+
+		// Prototype desertion stub: if we hit 0 gold, lose 1 troop and morale -1.
+		if (player.Gold <= 0 && troopCount > player.PartySizeMin)
+		{
+			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize - 1);
+			player.Morale = Mathf.Clamp(player.Morale - 1, 0, 100);
+		}
+
+		player.QueueRedraw();
 	}
 
 	private void TryResolveAiBattles()
@@ -174,27 +301,43 @@ public partial class SimulationRoot : Node2D
 
 	private void ResolveAiBattle(RandomAI a, RandomAI b)
 	{
-		// Winner = stronger by strength proxy.
+		// Phase 4 Step 4.3: outnumbered penalty before battle starts, then combat power includes morale.
+		if (a.PartySize < b.PartySize)
+			a.Morale = Mathf.Clamp(a.Morale - MoraleOutnumberedPenalty, 0, 100);
+		else if (b.PartySize < a.PartySize)
+			b.Morale = Mathf.Clamp(b.Morale - MoraleOutnumberedPenalty, 0, 100);
+
+		var aPower = ApplyCombatPower(a.PartySize, a.Morale);
+		var bPower = ApplyCombatPower(b.PartySize, b.Morale);
+
 		RandomAI winner;
 		RandomAI loser;
 
-		if (a.StrengthValue > b.StrengthValue)
+		if (aPower > bPower)
 		{
 			winner = a;
 			loser = b;
 		}
-		else if (b.StrengthValue > a.StrengthValue)
+		else if (bPower > aPower)
 		{
 			winner = b;
 			loser = a;
 		}
 		else
 		{
-			// Tie-breaker: higher gold wins; then higher instance id.
-			if (a.Gold != b.Gold)
+			// Tie-breakers:
+			// 1) higher strength proxy (StrengthValue)
+			// 2) higher gold
+			// 3) higher instance id
+			if (a.StrengthValue != b.StrengthValue)
 			{
-				if (a.Gold > b.Gold) { winner = a; loser = b; }
-				else { winner = b; loser = a; }
+				winner = a.StrengthValue > b.StrengthValue ? a : b;
+				loser = winner == a ? b : a;
+			}
+			else if (a.Gold != b.Gold)
+			{
+				winner = a.Gold > b.Gold ? a : b;
+				loser = winner == a ? b : a;
 			}
 			else if (a.GetInstanceId() > b.GetInstanceId())
 			{
@@ -208,13 +351,17 @@ public partial class SimulationRoot : Node2D
 			}
 		}
 
+		// Recent victory morale after the battle outcome.
+		winner.Morale = Mathf.Clamp(winner.Morale + MoraleVictoryBonus, 0, 100);
+		loser.Morale = Mathf.Clamp(loser.Morale - MoraleDefeatPenalty, 0, 100);
+
 		var halfLoserTroops = loser.PartySize / 2; // spec: half the troops
 		winner.PartySize = Mathf.Clamp(winner.PartySize + halfLoserTroops, winner.PartySizeMin, winner.PartySizeMax);
 		winner.StrengthValue = winner.PartySize; // keep proxy consistent with absorbed troops
 
 		winner.Gold = Mathf.Max(0, winner.Gold + loser.Gold); // all gold
 		winner.QueueRedraw(); // debug label must update immediately
-		//loser.QueueRedraw(); ignored because loser will be freed - do not remove for now
+		// loser.QueueRedraw() is unnecessary because loser will be freed.
 		// Winner rests after battle so it doesn't immediately re-engage.
 		var restTicks = Mathf.Max(1, (int)(TicksPerSecond * 2.5f));
 		winner.StartRestTicks(restTicks);
@@ -408,18 +555,26 @@ public partial class SimulationRoot : Node2D
 	private void AutoResolve(PlayerParty player, RandomAI ai)
 	{
 		// Phase 3 Step 3.2: Auto-resolve v1 (placeholder values allowed).
-		// For now: use PartySize as "power" with a ±20% random modifier; loser loses 1 troop.
-		var pPower = ApplyModifier(player.PartySize);
-		var aPower = ApplyModifier(ai.PartySize);
+		// Phase 4 Step 4.3: power includes morale, plus outnumbered penalty before battle.
+		if (player.PartySize < ai.PartySize)
+			player.Morale = Mathf.Clamp(player.Morale - MoraleOutnumberedPenalty, 0, 100);
+		else if (ai.PartySize < player.PartySize)
+			ai.Morale = Mathf.Clamp(ai.Morale - MoraleOutnumberedPenalty, 0, 100);
+
+		// Power includes morale (morale factor) and a ±20% random modifier.
+		var pPower = ApplyCombatPower(player.PartySize, player.Morale);
+		var aPower = ApplyCombatPower(ai.PartySize, ai.Morale);
 
 		var playerWins = pPower >= aPower;
 		if (playerWins)
 		{
 			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize - 1);
 			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize); // winner keeps size (v1)
-			player.Morale = Mathf.Clamp(player.Morale + 2, 0, 100);
+			// Recent victory morale.
+			player.Morale = Mathf.Clamp(player.Morale + MoraleVictoryBonus, 0, 100);
 			player.Gold = Mathf.Max(0, player.Gold + 3);
-			ai.Morale = Mathf.Clamp(ai.Morale - 2, 0, 100);
+			// Recent defeat morale.
+			ai.Morale = Mathf.Clamp(ai.Morale - MoraleDefeatPenalty, 0, 100);
 			ai.Gold = Mathf.Max(0, ai.Gold - 2);
 			player.QueueRedraw();
 			ai.QueueRedraw();
@@ -429,9 +584,9 @@ public partial class SimulationRoot : Node2D
 		{
 			player.PartySize = Mathf.Max(player.PartySizeMin, player.PartySize - 1);
 			ai.PartySize = Mathf.Max(ai.PartySizeMin, ai.PartySize);
-			player.Morale = Mathf.Clamp(player.Morale - 2, 0, 100);
+			player.Morale = Mathf.Clamp(player.Morale - MoraleDefeatPenalty, 0, 100);
 			player.Gold = Mathf.Max(0, player.Gold - 2);
-			ai.Morale = Mathf.Clamp(ai.Morale + 2, 0, 100);
+			ai.Morale = Mathf.Clamp(ai.Morale + MoraleVictoryBonus, 0, 100);
 			ai.Gold = Mathf.Max(0, ai.Gold + 3);
 			player.QueueRedraw();
 			ai.QueueRedraw();
@@ -449,21 +604,28 @@ public partial class SimulationRoot : Node2D
 		}
 	}
 
-	private static float ApplyModifier(int partySize)
+	private float ApplyCombatPower(int partySize, int morale)
 	{
+		// Combat power = troops * random(±20%) * moraleFactor.
 		var basePower = Mathf.Max(0, partySize);
 		var mod = Rng.RandfRange(0.8f, 1.2f);
-		return basePower * mod;
+
+		var moraleClamped = Mathf.Clamp(morale, 0, 100);
+		var moraleFactor = MoraleCombatPowerFactorBase + (moraleClamped / 100f) * MoraleCombatPowerFactorScale;
+		return basePower * mod * moraleFactor;
 	}
 
-	private static bool TryFlee(PlayerParty player, RandomAI ai)
+	private bool TryFlee(PlayerParty player, RandomAI ai)
 	{
-		// Very simple v1:
-		// - If player is faster, guaranteed escape.
-		// - Otherwise 50/50.
-		if (player.CurrentSpeedPxPerSec > ai.CurrentSpeedPxPerSec)
-			return true;
-		return Rng.Randf() < 0.5f;
+		// Phase 4 Step 4.3: flee odds influenced by morale difference.
+		var speedRatio = player.CurrentSpeedPxPerSec / Mathf.Max(0.01f, ai.CurrentSpeedPxPerSec);
+
+		var baseChance = speedRatio >= 1f ? 0.75f : 0.5f;
+		var moraleDiff = player.Morale - ai.Morale; // [-100..100]
+		var moraleBonus = moraleDiff / 200f; // [-0.5..0.5]
+
+		var fleeChance = Mathf.Clamp(baseChance + moraleBonus, 0f, 1f);
+		return Rng.Randf() < fleeChance;
 	}
 
 	private void PushApart(PlayerParty player, RandomAI ai)

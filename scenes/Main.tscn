@@ -15,11 +15,14 @@
 script = ExtResource("2_jn6a6")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=412245862]
+physics_interpolation_mode = 1
 
 [node name="WorldCameraFit" type="Node" parent="." unique_id=1854914696]
+physics_interpolation_mode = 1
 script = ExtResource("3_yw2m1")
 CameraPath = NodePath("../Camera2D")
 WorldBoundsPath = NodePath("../WorldBounds")
+PlayerPath = NodePath("../SimulationRoot/Player")
 VisualPaddingPx = 64.0
 
 [node name="DebugCanvas" type="CanvasLayer" parent="." unique_id=741826329]

@@ -15,13 +15,14 @@ run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.6", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+
 [dotnet]
 
 project/assembly_name="Warband"
-
-[display]
-window/size/viewport_width=1920
-window/size/viewport_height=1080
 
 [input]
 
@@ -59,6 +60,7 @@ party_size_decrease={
 [physics]
 
 3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
 
 [rendering]
 

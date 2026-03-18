@@ -4,6 +4,7 @@ public partial class WorldCameraFit2D : Node
 {
 	[Export] public NodePath CameraPath { get; set; } = new("");
 	[Export] public NodePath WorldBoundsPath { get; set; } = new("");
+	[Export] public NodePath PlayerPath { get; set; } = new("");
 
 	// Screen-space padding so the map rectangle doesn't touch viewport edges.
 	[Export(PropertyHint.Range, "0,512,1")]
@@ -12,30 +13,48 @@ public partial class WorldCameraFit2D : Node
 	private Camera2D? _camera;
 	private WorldBounds2D? _bounds;
 	private Vector2 _lastViewportSize;
+	private Node2D? _player;
+
+	// Keep a consistent world->screen scale and just move the camera.
+	[Export(PropertyHint.Range, "0.1,4,0.01")]
+	public float DefaultZoom { get; set; } = 1f;
+
+	private Vector2 _halfVisibleWorld;
 
 	public override void _Ready()
 	{
 		_camera = GetNodeOrNull<Camera2D>(CameraPath);
 		_bounds = GetNodeOrNull<WorldBounds2D>(WorldBoundsPath);
+		_player = GetNodeOrNull<Node2D>(PlayerPath);
 
 		_lastViewportSize = GetViewport().GetVisibleRect().Size;
-		Fit();
+		if (_camera != null)
+			_camera.Zoom = new Vector2(DefaultZoom, DefaultZoom);
+
+		UpdateHalfVisibleWorld();
+		FollowPlayer();
 	}
 
 	public override void _Process(double delta)
 	{
-		var size = GetViewport().GetVisibleRect().Size;
-		if (size == _lastViewportSize) return;
-		_lastViewportSize = size;
-		Fit();
+		/**var size = GetViewport().GetVisibleRect().Size;
+		if (size != _lastViewportSize)
+		{
+			_lastViewportSize = size;
+			UpdateHalfVisibleWorld();
+		}**/
+
+		
+	}
+	
+	public override void _PhysicsProcess(double delta){
+		// Follow continuously; viewport size rarely changes but player position constantly does.
+		FollowPlayer();
 	}
 
-	private void Fit()
+	private void UpdateHalfVisibleWorld()
 	{
-		if (_camera == null || _bounds == null) return;
-
-		var rect = _bounds.OuterRect;
-		_camera.Position = rect.GetCenter();
+		/**if (_camera == null) return;
 
 		var viewport = GetViewport();
 		var viewportSize = viewport.GetVisibleRect().Size;
@@ -43,15 +62,37 @@ public partial class WorldCameraFit2D : Node
 		available.X = Mathf.Max(1f, available.X);
 		available.Y = Mathf.Max(1f, available.Y);
 
-		// Keep the full rect visible. We scale the camera so the whole OuterRect fits
-		// inside the viewport minus padding. Larger viewports will zoom IN (> 1),
-		// smaller viewports will zoom OUT (< 1).
-		var scaleX = available.X / rect.Size.X;
-		var scaleY = available.Y / rect.Size.Y;
-		var fitScale = Mathf.Min(scaleX, scaleY);
-		// In Godot, Camera2D.Zoom < 1 zooms OUT, > 1 zooms IN.
-		var zoomFactor = fitScale;
-		_camera.Zoom = new Vector2(zoomFactor, zoomFactor);
+		// Convert available viewport pixels into world units using current zoom.
+		var zoom = _camera.Zoom;
+		_halfVisibleWorld = new Vector2(
+			available.X / (2f * zoom.X),
+			available.Y / (2f * zoom.Y));**/
+	}
+
+	private void FollowPlayer()
+	{
+		if (_camera == null || _bounds == null) return;
+
+		var outer = _bounds.OuterRect;
+		var targetPos = _player != null ? _player.GlobalPosition : outer.GetCenter();
+
+		/**var minX = outer.Position.X + _halfVisibleWorld.X;
+		var maxX = outer.End.X - _halfVisibleWorld.X;
+		var minY = outer.Position.Y + _halfVisibleWorld.Y;
+		var maxY = outer.End.Y - _halfVisibleWorld.Y;
+
+		var center = outer.GetCenter();
+		if (minX <= maxX)
+			targetPos.X = Mathf.Clamp(targetPos.X, minX, maxX);
+		else
+			targetPos.X = center.X;
+
+		if (minY <= maxY)
+			targetPos.Y = Mathf.Clamp(targetPos.Y, minY, maxY);
+		else
+			targetPos.Y = center.Y;**/
+
+		_camera.GlobalPosition = targetPos;
 		_camera.MakeCurrent();
 	}
 }
