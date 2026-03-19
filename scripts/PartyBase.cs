@@ -41,6 +41,18 @@ public abstract partial class PartyBase : Area2D, IFixedTick
 
 	[Export] public NodePath WorldBoundsPath { get; set; } = new("");
 
+	private int _ticksPerSecond = 10;
+
+	/// <summary>
+	/// Configured by `SimulationRoot` so tick-based timers use the real tick rate.
+	/// </summary>
+	public void SetTicksPerSecond(int ticksPerSecond)
+	{
+		_ticksPerSecond = Mathf.Max(1, ticksPerSecond);
+	}
+
+	protected int TickRate => _ticksPerSecond;
+
 	protected WorldBounds2D? Bounds { get; private set; }
 
 	protected Vector2 Target { get; private set; }

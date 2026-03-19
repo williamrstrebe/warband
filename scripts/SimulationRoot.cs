@@ -3,7 +3,7 @@ using Warband.Core;
 
 public partial class SimulationRoot : Node2D
 {
-	[Export] public int TicksPerSecond { get; set; } = 10;
+	[Export] public int TicksPerSecond { get; set; } = 60;
 	[Export] public int MaxTicksPerFrame { get; set; } = 120;
 
 	private FixedTickClock? _clock;
@@ -113,6 +113,13 @@ public partial class SimulationRoot : Node2D
 
 		_starvationIntervalSeconds = 24.0 * SimSecondsPerInGameHour;
 		_starvationSecondsLeft = _starvationIntervalSeconds;
+
+		// Propagate tick rate into all party nodes so tick-based timers behave correctly.
+		foreach (var child in GetChildren())
+		{
+			if (child is PartyBase party)
+				party.SetTicksPerSecond(TicksPerSecond);
+		}
 
 		SpawnTowns();
 		SpawnAiParties();
@@ -663,6 +670,7 @@ public partial class SimulationRoot : Node2D
 				Name = $"AI_{i + 1}",
 				WorldBoundsPath = WorldBoundsPathFromParty,
 			};
+			ai.SetTicksPerSecond(TicksPerSecond);
 
 			var p = GetRandomPoint(bounds.InnerRect);
 			ai.GlobalPosition = p;

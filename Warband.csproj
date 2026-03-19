@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="vn/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="src\Warband.Core\Warband.Core.csproj" />
   </ItemGroup>
 </Project>

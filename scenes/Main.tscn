@@ -16,6 +16,7 @@ script = ExtResource("2_jn6a6")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=412245862]
 physics_interpolation_mode = 1
+process_callback = 0
 
 [node name="WorldCameraFit" type="Node" parent="." unique_id=1854914696]
 physics_interpolation_mode = 1

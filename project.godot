@@ -60,7 +60,6 @@ party_size_decrease={
 [physics]
 
 3d/physics_engine="Jolt Physics"
-common/physics_interpolation=true
 
 [rendering]
 

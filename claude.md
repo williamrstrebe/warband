@@ -147,11 +147,11 @@ dotnet test
 - `RandomAI` is a Godot-side `Area2D, IFixedTick` that reuses the same speed model fields as `PlayerParty` (including `BaseSpeedPxPerSec`, `PartySize`, `PartySizePenaltyK`, and `CurrentSpeedPxPerSec`).
 - Behavior model:
   - AI alternates between an **Idle** state and a **Moving** state.
-  - While idle, it waits for a random duration (0.5–1.5 seconds, expressed as ticks assuming the 10 ticks/sec default) before choosing a new destination.
+  - While idle, it waits for a random duration (0.5–1.5 seconds). The waiting time is converted to ticks using the configured simulation tick rate.
   - When moving, it:
 	- Picks a random point inside `WorldBounds2D.InnerRect` as the current target.
 	- Moves toward that point using `CurrentSpeedPxPerSec` inside `FixedTick(...)`.
-	- Periodically re-targets to a new random point after a random interval (1–3 seconds in ticks) to encourage broad map coverage.
+	- Periodically re-targets to a new random point after a random interval (1–3 seconds, converted to ticks using the configured simulation tick rate) to encourage broad map coverage.
 	- Transitions back to Idle once it comes within `StopThresholdPx` of its current target.
 - Bounds rule: positions are always clamped via `WorldBounds2D.ClampPointToInnerRect(...)`, so AI circles cannot leave the map and have no boundary jitter.
 - Tests:
@@ -306,3 +306,22 @@ dotnet test
 
 ## Map scale-up prerequisite (Phase 5)
 - Updated `WorldBounds2D.Size` default from `1200x800` to `3600x2400` (3x width and height), so there is enough space for map density work.
+
+## Tick rate change (smoother movement placeholders)
+- Increased `SimulationRoot.TicksPerSecond` default from `10` to `60` to reduce visible per-tick stepping for placeholder movement visuals.
+- Updated `RandomAI` idle/retarget timers to use the configured tick rate (no more hardcoded `* 10` assumptions).
+
+## Camera behavior (Phase 5+)
+- `WorldCameraFit2D` is now minimal: it continuously centers `Camera2D` on the player each frame.
+- Removed viewport/world clamp logic to prevent camera-boundary-induced visual stepping while the player moves near the screen edges.
+
+## Visual Novel plugin system (simplified)
+- Started `VNRunner` scene + runtime in `vn/`:
+  - Scene: `res://vn/scenes/VNRunner.tscn`
+  - Runtime: `res://vn/runtime/VNRunner.cs`
+- Current simplifications per user request:
+  - Localization and Delay are ignored.
+  - `ShowImage` uses `image` only (texture ignored).
+- Runtime expects `res://vn/compiled/{scriptId}.res`, produced by the VN storage compiler:
+  - JSON: `res://vn/scripts_json/*.json`
+  - `.res` output: `res://vn/compiled/{script_id}.res`

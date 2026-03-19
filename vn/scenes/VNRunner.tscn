@@ -1,0 +1,62 @@
+[gd_scene format=3 uid="uid://vnrunner_simplified_1"]
+
+[ext_resource type="Script" path="res://vn/runtime/VNRunner.cs" id="1_vnrunner" ]
+
+[node name="VNRunner" type="Control" unique_id=1428570001]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_vnrunner")
+
+[node name="DialogueLabel" type="Label" parent="." unique_id=1428570002]
+layout_mode = 3
+anchors_preset = 9
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = ""
+
+[node name="ChoiceVBox" type="VBoxContainer" parent="." unique_id=1428570003]
+layout_mode = 3
+anchors_preset = 9
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 240.0
+offset_right = -16.0
+offset_bottom = 520.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="ImagesRoot" type="Control" parent="." unique_id=1428570004]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VideoRoot" type="Control" parent="." unique_id=1428570005]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VoiceAudio" type="AudioStreamPlayer" parent="." unique_id=1428570006]
+
+[node name="BgmAudio" type="AudioStreamPlayer" parent="." unique_id=1428570007]
+
+[node name="SfxAudio" type="AudioStreamPlayer" parent="." unique_id=1428570008]
+

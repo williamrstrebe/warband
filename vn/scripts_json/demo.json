@@ -1,0 +1,17 @@
+{
+  "script_id": "demo",
+  "start": "t0",
+  "commands": [
+    {
+      "id": "t0",
+      "type": "ShowText",
+      "next": null,
+      "data": {
+        "text_key": "Hello (literal)",
+        "fallback_text": "Hello (literal)"
+      },
+      "branches": {}
+    }
+  ]
+}
+

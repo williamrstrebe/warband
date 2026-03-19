@@ -48,16 +48,16 @@ public partial class RandomAI : PartyBase
 		);
 	}
 
-	private static int GetRandomRetargetTicks()
+	private int GetRandomRetargetTicks()
 	{
 		var seconds = Rng.RandfRange(1f, 3f);
-		return (int)(seconds * 10); // matches 10 ticks/sec default
+		return (int)(seconds * TickRate);
 	}
 
-	private static int GetRandomIdleTicks()
+	private int GetRandomIdleTicks()
 	{
 		var seconds = Rng.RandfRange(0.5f, 1.5f);
-		return (int)(seconds * 10);
+		return (int)(seconds * TickRate);
 	}
 
 	public override void FixedTick(double tickDeltaSeconds)
